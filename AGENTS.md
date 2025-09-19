@@ -1,0 +1,277 @@
+# AI Agent Instructions for langgraph-rs Development
+
+## Project Overview
+You are working on **langgraph-rs**, a Rust-based transpiler that converts LangGraph (Python) workflows into high-performance Rust code for production LLM applications.
+
+## Project Context
+- **Location**: `/Users/tim.van.wassenhove/src/github/langgraph-rs`
+- **Repository**: https://github.com/genai-rs/langgraph-rs
+- **Language**: Rust (target), Python (source)
+- **Purpose**: Enable 5-10x performance improvements for LangGraph workflows (goal)
+- **Current Status**: Basic project structure only - no working conversion yet
+
+## Key Architectural Decisions
+
+### 1. Module Structure
+- **langgraph-inspector**: PyO3-based Python introspection
+- **langgraph-generator**: Rust code generation from metadata
+- **langgraph-runtime**: Runtime support for generated code
+- **langgraph-cli**: Command-line interface
+
+### 2. Core Principles
+- **Type Safety**: All Python types must map to strongly-typed Rust
+- **Zero-Cost Abstractions**: Generated code should be as efficient as hand-written
+- **Async-First**: Use Tokio for all async operations
+- **Error Handling**: Use `anyhow` for applications, `thiserror` for libraries
+
+### 3. Code Generation Strategy
+- Extract metadata at runtime (not static analysis)
+- Generate idiomatic Rust code
+- Preserve original Python as comments for reference
+- Support incremental migration (hybrid Python/Rust)
+
+## Development Guidelines
+
+### CRITICAL: Development Workflow
+
+**NEVER make changes directly on the main branch. Always use feature branches and PRs.**
+
+#### For Every Task:
+
+1. **Create a feature branch:**
+```bash
+git checkout -b feature/your-feature-name
+# OR for exploration:
+git checkout -b explore/what-you-are-exploring
+```
+
+2. **Make your changes and commit frequently:**
+```bash
+# After each logical change:
+git add .
+git commit -m "feat: describe what you implemented"
+```
+
+3. **Push and create a PR:**
+```bash
+git push -u origin feature/your-feature-name
+# Then create a PR on GitHub for review
+```
+
+4. **Commit Message Format:**
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `docs:` - Documentation only
+- `test:` - Adding tests
+- `refactor:` - Code change that neither fixes a bug nor adds a feature
+- `chore:` - Changes to build process or auxiliary tools
+
+#### Important Rules:
+
+- **DO NOT** make up features or roadmaps - only implement what's actually planned
+- **DO NOT** claim features are working if they're not
+- **ALWAYS** commit after completing each instruction/task
+- **ALWAYS** create a PR for review rather than merging directly
+- **WHEN EXPLORING** use a separate branch (`explore/...`) to avoid breaking main
+
+This workflow allows multiple developers (and AI agents) to work on the backlog simultaneously without conflicts.
+
+### When Adding New Features
+
+1. **Always check TODO.md first** - See what phase we're in and what's priority
+2. **Create a feature branch** - Never work directly on main
+3. **Follow the module boundaries** - Don't mix concerns between modules
+4. **Write tests first** - TDD approach for reliability
+5. **Document as you go** - Comments in code, update README if needed
+6. **Commit frequently** - After each logical change
+7. **Create a PR** - For review and discussion
+
+### Code Style
+
+```rust
+// Use descriptive names
+async fn extract_graph_metadata(graph: &PyAny) -> Result<GraphInfo>
+
+// Not: async fn extract(g: &PyAny) -> Result<Info>
+
+// Always handle errors explicitly
+let nodes = graph.getattr("nodes")
+    .map_err(|e| anyhow!("Failed to get nodes: {}", e))?;
+
+// Use tracing for debugging
+tracing::debug!("Extracting {} nodes", nodes.len());
+```
+
+### Python Introspection Guidelines
+
+When working with PyO3:
+1. Always use `Python::with_gil()` for Python operations
+2. Extract data into Rust types as soon as possible
+3. Handle Python None values explicitly
+4. Test with various Python versions (3.8+)
+
+Example:
+```rust
+Python::with_gil(|py| {
+    let result = python_object.call_method0("compile")?;
+    // Convert to Rust type immediately
+    let rust_data: GraphInfo = extract_info(result)?;
+    Ok(rust_data)
+})
+```
+
+### Type Mapping Rules
+
+| Python Type | Rust Type | Notes |
+|------------|-----------|-------|
+| str | String | Always owned |
+| int | i64 | Default to i64 |
+| float | f64 | |
+| bool | bool | |
+| List[T] | Vec<T> | Recursive mapping |
+| Dict[K, V] | HashMap<K, V> | |
+| Optional[T] | Option<T> | |
+| Any | serde_json::Value | Fallback |
+
+### Testing Strategy
+
+1. **Unit Tests**: Each function should have tests
+2. **Integration Tests**: Test module interactions
+3. **End-to-End Tests**: Full workflow conversions
+4. **Comparison Tests**: Python vs Rust output equality
+
+### Common Tasks
+
+#### Adding a New Node Type
+1. Update `NodeInfo` struct in inspector
+2. Add extraction logic in `extract_graph_info`
+3. Update generator to handle new node type
+4. Add runtime support if needed
+5. Create test case
+
+#### Supporting a New LangGraph Feature
+1. Create example Python workflow using the feature
+2. Inspect what metadata is available via PyO3
+3. Design Rust representation
+4. Implement extraction, generation, and runtime
+5. Validate with comparison test
+
+#### Debugging Conversion Issues
+1. Use `langgraph-rs inspect` to see extracted metadata
+2. Check generated Rust code for correctness
+3. Run validation to compare outputs
+4. Add tracing to pinpoint issues
+
+## Project-Specific Patterns
+
+### State Management
+```rust
+// Always use this pattern for state
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct GraphState {
+    // Fields from Python TypedDict
+}
+
+impl From<PythonState> for GraphState {
+    // Conversion logic
+}
+```
+
+### Node Implementation
+```rust
+#[async_trait]
+impl GraphNode for CustomNode {
+    async fn execute(&self, state: GraphState) -> Result<GraphState> {
+        // Node logic here
+    }
+}
+```
+
+### Error Handling
+```rust
+// For recoverable errors
+if let Err(e) = operation() {
+    tracing::warn!("Operation failed, using fallback: {}", e);
+    fallback_value()
+}
+
+// For critical errors
+operation().context("Failed to perform critical operation")?;
+```
+
+## Current Limitations & Workarounds
+
+1. **Conditional Edges**: Not fully implemented
+   - Workaround: Generate all possible paths, use runtime conditions
+
+2. **Streaming**: Not yet supported
+   - Workaround: Batch processing for now
+
+3. **Human-in-the-loop**: Needs design
+   - Workaround: Use external message queue
+
+## Helpful Commands
+
+```bash
+# Build everything
+cargo build --workspace
+
+# Run CLI
+cargo run --bin langgraph-rs -- --help
+
+# Test specific module
+cargo test -p langgraph-generator
+
+# Check code
+cargo clippy --all-targets --all-features
+cargo fmt --check
+
+# Generate docs
+cargo doc --open
+
+# Run example conversion
+cargo run --bin langgraph-rs -- convert examples/simple_workflow.py --output ./generated
+```
+
+## Resources
+
+- [LangGraph Documentation](https://python.langchain.com/docs/langgraph)
+- [PyO3 Book](https://pyo3.rs/)
+- [Rust Async Book](https://rust-lang.github.io/async-book/)
+- [Serde Documentation](https://serde.rs/)
+
+## Important Notes
+
+1. **Be Truthful**: Only describe features that actually exist and work
+2. **Performance is Key**: This project exists to make LangGraph faster. Always benchmark when features are complete.
+3. **Compatibility**: Aim for 95% LangGraph feature coverage eventually, document current limitations clearly.
+4. **User Experience**: The CLI should be intuitive, errors should be helpful.
+5. **Production Focus**: Generated code should be production-ready, not just functional.
+6. **Use Branches**: Never work on main directly - always create feature or exploration branches.
+
+## Questions to Ask
+
+When implementing new features, consider:
+- How does LangGraph handle this in Python?
+- What's the most idiomatic Rust equivalent?
+- Will this scale to thousands of requests?
+- Is the generated code maintainable?
+- Are we preserving the original semantics?
+
+## Contact
+
+- **Maintainer**: Tim Van Wassenhove
+- **Email**: tim.van.wassenhove@gmail.com
+- **GitHub**: @timvw
+- **Project**: https://github.com/genai-rs/langgraph-rs
+
+## For New Contributors
+
+1. Read this document completely
+2. Check TODO.md for current priorities
+3. Set up development environment (Rust + Python)
+4. Start with a "Quick Win" task
+5. Join discussions in GitHub Issues
+6. Ask questions - we're here to help!
+
+Remember: The goal is production-ready, high-performance LLM applications. Every decision should support this goal.

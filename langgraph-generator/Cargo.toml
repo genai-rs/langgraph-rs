@@ -1,0 +1,18 @@
+[package]
+name = "langgraph-generator"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+quote = "1.0"
+syn = "2.0"
+proc-macro2 = "1.0"
+langgraph-inspector = { path = "../langgraph-inspector" }
