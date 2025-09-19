@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = [
+    "langgraph-inspector",
+    "langgraph-generator",
+    "langgraph-runtime",
+    "langgraph-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Tim Van Wassenhove <tim.van.wassenhove@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/genai-rs/langgraph-rs"
+homepage = "https://github.com/genai-rs/langgraph-rs"
+documentation = "https://docs.rs/langgraph-rs"
+readme = "README.md"
+keywords = ["langgraph", "langchain", "llm", "genai", "rust"]
+categories = ["development-tools", "command-line-utilities"]
+
+[workspace.dependencies]
+tokio = { version = "1.40", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4.5", features = ["derive"] }
+pyo3 = { version = "0.22", features = ["auto-initialize"] }
+reqwest = { version = "0.12", features = ["json"] }
+async-trait = "0.1"
+petgraph = "0.6"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
