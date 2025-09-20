@@ -1,7 +1,7 @@
 use anyhow::Result;
 use langgraph_inspector::{FieldInfo, GraphInfo, NodeInfo};
 use quote::{format_ident, quote};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub struct CodeGenerator {
     graph_info: GraphInfo,
@@ -54,12 +54,46 @@ pub async fn run_graph(initial_state: GraphState) -> Result<GraphState> {{
             .map(|field| self.field_to_rust(field))
             .collect();
 
+        // Generate field initializers for new() constructor
+        let field_initializers: Vec<String> = self
+            .graph_info
+            .state_schema
+            .fields
+            .iter()
+            .map(|field| {
+                let name = sanitize_identifier(&field.name);
+                if field.is_optional {
+                    format!("            {}: None", name)
+                } else {
+                    match field.type_name.as_str() {
+                        "list" => format!("            {}: Vec::new()", name),
+                        "dict" => format!("            {}: HashMap::new()", name),
+                        "str" => format!("            {}: String::new()", name),
+                        "int" => format!("            {}: 0", name),
+                        "float" => format!("            {}: 0.0", name),
+                        "bool" => format!("            {}: false", name),
+                        _ => format!("            {}: Default::default()", name),
+                    }
+                }
+            })
+            .collect();
+
         let struct_def = format!(
             r#"#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphState {{
 {}
+}}
+
+impl GraphState {{
+    /// Create a new instance with default values
+    pub fn new() -> Self {{
+        Self {{
+{}
+        }}
+    }}
 }}"#,
-            fields.join(",\n")
+            fields.join(",\n"),
+            field_initializers.join(",\n")
         );
 
         Ok(struct_def)
@@ -68,11 +102,12 @@ pub struct GraphState {{
     /// Convert a field to Rust type
     fn field_to_rust(&self, field: &FieldInfo) -> String {
         let rust_type = self.python_type_to_rust(&field.type_name);
+        let sanitized_name = sanitize_identifier(&field.name);
 
         if field.is_optional {
-            format!("    pub {}: Option<{}>", field.name, rust_type)
+            format!("    pub {}: Option<{}>", sanitized_name, rust_type)
         } else {
-            format!("    pub {}: {}", field.name, rust_type)
+            format!("    pub {}: {}", sanitized_name, rust_type)
         }
     }
 
@@ -103,7 +138,8 @@ pub struct GraphState {{
 
     /// Generate a single node function
     fn generate_node_function(&self, node: &NodeInfo) -> String {
-        let func_name = format_ident!("{}_node", node.name);
+        let sanitized_name = sanitize_identifier(&node.name);
+        let func_name = format_ident!("{}_node", sanitized_name);
         let docstring = node.docstring.as_deref().unwrap_or("Generated node function");
 
         format!(
@@ -147,12 +183,96 @@ async fn {}(state: GraphState) -> Result<GraphState> {{
 
     /// Generate execution sequence
     fn generate_execution_sequence(&self) -> String {
-        self.graph_info
-            .nodes
-            .iter()
-            .map(|node| format!("    state = {}_node(state).await?;", node.name))
-            .collect::<Vec<_>>()
-            .join("\n")
+        // Build execution order from edges
+        let mut visited = std::collections::HashSet::new();
+        let mut sequence = Vec::new();
+
+        // Start from entry point
+        let mut current = self.graph_info.entry_point.clone();
+
+        loop {
+            // Skip special nodes
+            if current == "__start__" || current == "__end__" {
+                // Find next node from edges
+                if let Some(edge) = self.graph_info.edges.iter().find(|e| e.from == current) {
+                    current = edge.to.clone();
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
+            // Avoid infinite loops
+            if visited.contains(&current) {
+                break;
+            }
+            visited.insert(current.clone());
+
+            // Add node to sequence
+            let sanitized = sanitize_identifier(&current);
+            sequence.push(format!("    state = {}_node(state).await?;", sanitized));
+
+            // Find next node
+            if let Some(edge) = self.graph_info.edges.iter().find(|e| e.from == current) {
+                current = edge.to.clone();
+            } else {
+                break;
+            }
+        }
+
+        if sequence.is_empty() {
+            // Fallback to all nodes if no edges defined
+            self.graph_info
+                .nodes
+                .iter()
+                .map(|node| {
+                    let sanitized = sanitize_identifier(&node.name);
+                    format!("    state = {}_node(state).await?;", sanitized)
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        } else {
+            sequence.join("\n")
+        }
+    }
+}
+
+/// Sanitize Python identifiers to be valid Rust identifiers
+fn sanitize_identifier(name: &str) -> String {
+    let mut result = String::new();
+
+    for (i, ch) in name.chars().enumerate() {
+        if i == 0 {
+            // First character must be alphabetic or underscore
+            if ch.is_alphabetic() || ch == '_' {
+                result.push(ch);
+            } else {
+                result.push('_');
+                if ch.is_alphanumeric() {
+                    result.push(ch);
+                }
+            }
+        } else {
+            // Subsequent characters can be alphanumeric or underscore
+            if ch.is_alphanumeric() || ch == '_' {
+                result.push(ch);
+            } else {
+                result.push('_');
+            }
+        }
+    }
+
+    // Check for Rust keywords and add underscore suffix if needed
+    match result.as_str() {
+        "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" |
+        "extern" | "false" | "fn" | "for" | "if" | "impl" | "in" | "let" |
+        "loop" | "match" | "mod" | "move" | "mut" | "pub" | "ref" | "return" |
+        "self" | "Self" | "static" | "struct" | "super" | "trait" | "true" |
+        "type" | "unsafe" | "use" | "where" | "while" | "async" | "await" |
+        "dyn" | "abstract" | "become" | "box" | "do" | "final" | "macro" |
+        "override" | "priv" | "typeof" | "unsized" | "virtual" | "yield" |
+        "try" => format!("{}_", result),
+        _ => result,
     }
 }
 
