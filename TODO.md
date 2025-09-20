@@ -11,10 +11,10 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
 - [x] Add example workflows
 
 ## Phase 2: Python Introspection 🚧
-- [ ] Set up Python test environment
-  - [ ] Create requirements.txt with LangGraph dependencies
-  - [ ] Set up Python virtual environment scripts
-  - [ ] Add test fixtures with various LangGraph patterns
+- [x] Set up Python test environment
+  - [x] Create requirements.txt with LangGraph dependencies
+  - [x] Set up Python virtual environment scripts
+  - [x] Add test fixtures with various LangGraph patterns
   - [ ] Configure pytest (including async support) and benchmarking plugins
   - [ ] Document fixture expectations in `docs/` for contributors
 
@@ -25,21 +25,21 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
   - [ ] Capture conditional edge functions
   - [ ] Extract tool definitions
 
-- [ ] Create type mapping system
-  - [ ] Map Python types to Rust types
-  - [ ] Handle complex types (List, Dict, Optional)
+- [x] Create type mapping system
+  - [x] Map Python types to Rust types
+  - [x] Handle complex types (List, Dict, Optional)
   - [ ] Support custom types and dataclasses
-  - [ ] Generate proper serde derives
+  - [x] Generate proper serde derives
 
 ## Phase 3: Code Generation 📝
-- [ ] Basic graph generation
-  - [ ] Generate state structs
-  - [ ] Generate node functions (stubs)
-  - [ ] Create graph executor
+- [x] Basic graph generation
+  - [x] Generate state structs
+  - [x] Generate node functions (stubs)
+  - [x] Create graph executor
   - [ ] Add proper error handling
-  - [ ] Traverse edges to determine execution order (support branching/loops)
-  - [ ] Sanitize node identifiers before emitting Rust symbols
-  - [ ] Generate state initialization helpers used by scaffolded tests
+  - [x] Traverse edges to determine execution order (support branching/loops)
+  - [x] Sanitize node identifiers before emitting Rust symbols
+  - [x] Generate state initialization helpers used by scaffolded tests
 
 - [ ] Advanced features
   - [ ] Conditional routing implementation
@@ -48,12 +48,12 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
   - [ ] Streaming support
   - [ ] Checkpointing/persistence
 
-- [ ] Code quality
+- [x] Code quality
   - [ ] Format generated code with rustfmt
-  - [ ] Add comprehensive comments
+  - [x] Add comprehensive comments
   - [ ] Generate documentation
-  - [ ] Include original Python as reference
-  - [ ] Add tests covering execution ordering and identifier sanitization
+  - [x] Include original Python as reference
+  - [x] Add tests covering execution ordering and identifier sanitization
 
 ## Phase 4: Runtime Support 🏃
 - [ ] Core runtime
@@ -129,14 +129,14 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
 
 ## Quick Wins 🎯
 These can be done in parallel:
-- [ ] Add GitHub Actions CI/CD
+- [x] Add GitHub Actions CI/CD
 - [ ] Set up code coverage
-- [ ] Create CONTRIBUTING.md
-- [ ] Add badges to README
+- [x] Create CONTRIBUTING.md
+- [x] Add badges to README
 - [ ] Create Discord/Slack community
 - [ ] Write blog post announcement
-- [ ] Update CLI codegen to reference `langgraph-runtime` via workspace path instead of unpublished crate version
-- [ ] Replace placeholder JSON in CLI inspector with integration to `langgraph-inspector`
+- [x] Update CLI codegen to reference `langgraph-runtime` via workspace path instead of unpublished crate version
+- [x] Replace placeholder JSON in CLI inspector with integration to `langgraph-inspector`
 
 ## Known Issues & Limitations 🐛
 - [ ] PyO3 requires Python 3.8+
