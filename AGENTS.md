@@ -247,6 +247,12 @@ operation().context("Failed to perform critical operation")?;
 3. **Human-in-the-loop**: Needs design
    - Workaround: Use external message queue
 
+4. **CLI Codegen placeholders**: Generated projects point to `langgraph-runtime = "0.1"` and rely on stubbed graph metadata
+   - Workaround: Edit generated `Cargo.toml` to use a path dependency and avoid relying on placeholder JSON
+
+5. **GraphState initializer gap**: Scaffolded tests assume a `GraphState::new()` constructor that the generator does not yet emit
+   - Workaround: Add the constructor manually when testing generated projects
+
 ## Helpful Commands
 
 ```bash

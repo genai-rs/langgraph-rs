@@ -215,31 +215,91 @@ async fn visualize_graph(graph: PathBuf, format: String, output: Option<PathBuf>
 }
 
 fn extract_graph_info(input: &PathBuf) -> Result<String> {
-    // TODO: Actually run Python and extract graph info
-    // For now, return a placeholder
+    // Check if Python file exists
+    if !input.exists() {
+        return Err(anyhow::anyhow!("Python file not found: {:?}", input));
+    }
+
+    // NOTE: Full PyO3 integration requires Python runtime setup
+    // This would typically involve:
+    // 1. Initialize Python interpreter
+    // 2. Load the langgraph module
+    // 3. Execute the Python file
+    // 4. Call langgraph_inspector::extract_graph_info
+
+    // For now, return example data with a warning
+    eprintln!("WARNING: Python introspection not yet fully implemented");
+    eprintln!("Using example graph metadata for demonstration purposes");
+
+    // Return example that matches simple_workflow.py structure
     Ok(serde_json::to_string_pretty(&serde_json::json!({
         "nodes": [
             {
                 "name": "start",
                 "func_name": "start_node",
-                "signature": "(state: State) -> State",
-                "docstring": "Start node",
+                "signature": "(state: AgentState) -> AgentState",
+                "docstring": "Initial processing node",
+                "source_hint": null
+            },
+            {
+                "name": "process",
+                "func_name": "process_node",
+                "signature": "(state: AgentState) -> AgentState",
+                "docstring": "Main processing logic",
+                "source_hint": null
+            },
+            {
+                "name": "end",
+                "func_name": "end_node",
+                "signature": "(state: AgentState) -> AgentState",
+                "docstring": "Cleanup and finalization",
                 "source_hint": null
             }
         ],
-        "edges": [],
+        "edges": [
+            {"from": "start", "to": "process", "condition": null},
+            {"from": "process", "to": "process", "condition": "counter < 3"},
+            {"from": "process", "to": "end", "condition": "counter >= 3"},
+            {"from": "end", "to": "__end__", "condition": null}
+        ],
         "state_schema": {
             "fields": [
                 {
                     "name": "messages",
                     "type_name": "list",
                     "is_optional": false,
-                    "default_value": null
+                    "default_value": []
+                },
+                {
+                    "name": "context",
+                    "type_name": "dict",
+                    "is_optional": false,
+                    "default_value": {}
+                },
+                {
+                    "name": "next_action",
+                    "type_name": "str",
+                    "is_optional": false,
+                    "default_value": ""
+                },
+                {
+                    "name": "counter",
+                    "type_name": "int",
+                    "is_optional": false,
+                    "default_value": 0
                 }
             ]
         },
         "entry_point": "start",
-        "conditional_edges": {}
+        "conditional_edges": {
+            "process": {
+                "condition_func": "route_next",
+                "branches": {
+                    "process": "process",
+                    "end": "end"
+                }
+            }
+        }
     }))?)
 }
 
@@ -248,6 +308,8 @@ fn generate_cargo_toml(input: &PathBuf) -> String {
         .and_then(|s| s.to_str())
         .unwrap_or("generated_graph");
 
+    // Use path dependency to langgraph-runtime in the workspace
+    // This assumes the generated project is within or near the workspace
     format!(r#"[package]
 name = "{}"
 version = "0.1.0"
@@ -259,7 +321,8 @@ serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
 anyhow = "1.0"
 async-trait = "0.1"
-langgraph-runtime = "0.1"
+# Use workspace path dependency until crate is published
+langgraph-runtime = {{ path = "../langgraph-runtime" }}
 "#, name)
 }
 

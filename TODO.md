@@ -37,6 +37,9 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
   - [ ] Generate node functions (stubs)
   - [ ] Create graph executor
   - [ ] Add proper error handling
+  - [ ] Traverse edges to determine execution order (support branching/loops)
+  - [ ] Sanitize node identifiers before emitting Rust symbols
+  - [ ] Generate state initialization helpers used by scaffolded tests
 
 - [ ] Advanced features
   - [ ] Conditional routing implementation
@@ -50,6 +53,7 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
   - [ ] Add comprehensive comments
   - [ ] Generate documentation
   - [ ] Include original Python as reference
+  - [ ] Add tests covering execution ordering and identifier sanitization
 
 ## Phase 4: Runtime Support 🏃
 - [ ] Core runtime
@@ -131,6 +135,8 @@ These can be done in parallel:
 - [ ] Add badges to README
 - [ ] Create Discord/Slack community
 - [ ] Write blog post announcement
+- [ ] Update CLI codegen to reference `langgraph-runtime` via workspace path instead of unpublished crate version
+- [ ] Replace placeholder JSON in CLI inspector with integration to `langgraph-inspector`
 
 ## Known Issues & Limitations 🐛
 - [ ] PyO3 requires Python 3.8+
