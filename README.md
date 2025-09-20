@@ -1,5 +1,11 @@
 # langgraph-rs 🦀
 
+[![CI](https://github.com/genai-rs/langgraph-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/genai-rs/langgraph-rs/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/genai-rs/langgraph-rs/branch/main/graph/badge.svg)](https://codecov.io/gh/genai-rs/langgraph-rs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Rust Version](https://img.shields.io/badge/rust-1.75%2B-orange)](https://www.rust-lang.org)
+
 Convert LangGraph (Python) workflows into high-performance Rust code for production-ready LLM applications.
 
 ## Overview
