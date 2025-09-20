@@ -282,3 +282,110 @@ pub fn generate_from_json(json: &str) -> Result<String> {
     let generator = CodeGenerator::new(graph_info);
     generator.generate_rust_code()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use langgraph_inspector::{ConditionalEdge, EdgeInfo, FieldInfo, StateSchema};
+    use serde_json::json;
+
+    fn create_test_graph_info() -> GraphInfo {
+        GraphInfo {
+            nodes: vec![
+                NodeInfo {
+                    name: "start".to_string(),
+                    func_name: "start_node".to_string(),
+                    signature: "(state: State) -> State".to_string(),
+                    docstring: Some("Start node".to_string()),
+                    source_hint: None,
+                },
+                NodeInfo {
+                    name: "process".to_string(),
+                    func_name: "process_node".to_string(),
+                    signature: "(state: State) -> State".to_string(),
+                    docstring: Some("Process node".to_string()),
+                    source_hint: None,
+                },
+            ],
+            edges: vec![
+                EdgeInfo {
+                    from: "start".to_string(),
+                    to: "process".to_string(),
+                    condition: None,
+                },
+                EdgeInfo {
+                    from: "process".to_string(),
+                    to: "__end__".to_string(),
+                    condition: None,
+                },
+            ],
+            state_schema: StateSchema {
+                fields: vec![
+                    FieldInfo {
+                        name: "messages".to_string(),
+                        type_name: "list".to_string(),
+                        is_optional: false,
+                        default_value: None,
+                    },
+                    FieldInfo {
+                        name: "counter".to_string(),
+                        type_name: "int".to_string(),
+                        is_optional: false,
+                        default_value: Some(json!(0)),
+                    },
+                ],
+            },
+            entry_point: "start".to_string(),
+            conditional_edges: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_generate_from_json() {
+        let graph_info = create_test_graph_info();
+        let json = serde_json::to_string(&graph_info).unwrap();
+
+        let result = generate_from_json(&json);
+        assert!(result.is_ok());
+
+        let code = result.unwrap();
+        assert!(code.contains("struct GraphState"));
+        assert!(code.contains("pub fn new()"));
+        assert!(code.contains("async fn start_node"));
+        assert!(code.contains("async fn process_node"));
+    }
+
+    #[test]
+    fn test_identifier_sanitization() {
+        // Test keyword sanitization
+        assert_eq!(sanitize_identifier("type"), "type_");
+        assert_eq!(sanitize_identifier("async"), "async_");
+        assert_eq!(sanitize_identifier("match"), "match_");
+
+        // Test special character sanitization
+        assert_eq!(sanitize_identifier("user-name"), "user_name");
+        assert_eq!(sanitize_identifier("field.name"), "field_name");
+        assert_eq!(sanitize_identifier("123field"), "_123field");
+
+        // Test normal identifiers
+        assert_eq!(sanitize_identifier("valid_name"), "valid_name");
+        assert_eq!(sanitize_identifier("_private"), "_private");
+    }
+
+    #[test]
+    fn test_optional_fields() {
+        let mut graph_info = create_test_graph_info();
+        graph_info.state_schema.fields.push(FieldInfo {
+            name: "optional_field".to_string(),
+            type_name: "str".to_string(),
+            is_optional: true,
+            default_value: None,
+        });
+
+        let generator = CodeGenerator::new(graph_info);
+        let code = generator.generate_rust_code().unwrap();
+
+        assert!(code.contains("pub optional_field: Option<String>"));
+        assert!(code.contains("optional_field: None"));
+    }
+}
