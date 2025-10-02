@@ -1,4 +1,4 @@
-# langgraph-rs 🦀
+# langgraph-rs
 
 Convert LangGraph (Python) workflows into high-performance Rust code for production-ready LLM applications.
 
@@ -15,19 +15,19 @@ Convert LangGraph (Python) workflows into high-performance Rust code for product
 
 ## Current Implementation Status
 
-✅ **Completed:**
+### Completed
 - Basic project structure and Cargo workspace
 - CLI skeleton with subcommands (convert, inspect, validate, visualize)
 - Module structure for inspector, generator, runtime, and CLI
 - Basic type definitions and traits
 - Example workflows (Python input and expected Rust output)
 
-🚧 **In Progress:**
+### In Progress
 - PyO3 introspection implementation
 - Actual Python-to-Rust conversion logic
 - Runtime execution framework
 
-❌ **Not Yet Implemented:**
+### Not Yet Implemented
 - Actual Python workflow parsing
 - Code generation from real LangGraph instances
 - Validation and testing framework
@@ -36,13 +36,12 @@ Convert LangGraph (Python) workflows into high-performance Rust code for product
 
 ## Architecture
 
-```
-langgraph-rs/
-├── langgraph-inspector/    # Python introspection via PyO3
-├── langgraph-generator/    # Rust code generation
-├── langgraph-runtime/      # Runtime support for generated code
-└── langgraph-cli/         # Command-line interface
-```
+The workspace is organised into the following crates:
+
+- `langgraph-inspector/` - Python introspection via PyO3
+- `langgraph-generator/` - Rust code generation
+- `langgraph-runtime/` - Runtime support for generated code
+- `langgraph-cli/` - Command-line interface
 
 ## Quick Start
 
@@ -124,7 +123,7 @@ async fn execute_graph(mut state: AgentState) -> Result<AgentState, anyhow::Erro
 
 ## Development Status
 
-🚧 **Early Development** - This project has just been initialized with basic structure. No functional conversion is working yet.
+**Development status:** Early development. The project currently provides only the basic workspace structure; no end-to-end conversion is available yet.
 
 ### Next Steps
 
@@ -151,12 +150,12 @@ This project is dual-licensed under MIT OR Apache-2.0.
 
 ## Related Projects & Resources
 
-- [LangGraph](https://github.com/langchain-ai/langgraph) – Original Python implementation
-- [Why LangGraph?](https://langchain-ai.github.io/langgraph/concepts/why-langgraph/) – Motivation and core concepts
-- [langchain-rust](https://github.com/Abraxas-365/langchain-rust) – LangChain for Rust
-- [rs-graph-llm](https://github.com/a-agmon/rs-graph-llm) – Rust framework inspired by LangGraph
-- [PyO3](https://github.com/PyO3/pyo3) – Rust bindings for Python
-- [PyO3 Book](https://pyo3.rs/main/getting-started.html) – Official getting started guide
+- [LangGraph](https://github.com/langchain-ai/langgraph) - Original Python implementation
+- [Why LangGraph?](https://langchain-ai.github.io/langgraph/concepts/why-langgraph/) - Motivation and core concepts
+- [langchain-rust](https://github.com/Abraxas-365/langchain-rust) - LangChain for Rust
+- [rs-graph-llm](https://github.com/a-agmon/rs-graph-llm) - Rust framework inspired by LangGraph
+- [PyO3](https://github.com/PyO3/pyo3) - Rust bindings for Python
+- [PyO3 Book](https://pyo3.rs/main/getting-started.html) - Official getting started guide
 
 ## Contact
 
