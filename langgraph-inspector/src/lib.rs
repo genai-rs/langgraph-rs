@@ -2,6 +2,8 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub mod type_mapping;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphInfo {
     pub nodes: Vec<NodeInfo>,
