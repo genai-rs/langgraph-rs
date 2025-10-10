@@ -10,26 +10,26 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
 - [x] Implement CLI skeleton
 - [x] Add example workflows
 
-## Phase 2: Python Introspection 🚧
-- [ ] Set up Python test environment
-  - [ ] Create requirements.txt with LangGraph dependencies
-  - [ ] Set up Python virtual environment scripts
-  - [ ] Add test fixtures with various LangGraph patterns
-  - [ ] Configure pytest (including async support) and benchmarking plugins
-  - [ ] Document fixture expectations in `docs/` for contributors
+## Phase 2: Python Introspection 🚧 (95% Complete)
+- [x] Set up Python test environment
+  - [x] Create requirements.txt with LangGraph dependencies
+  - [x] Set up Python virtual environment scripts
+  - [x] Add test fixtures with various LangGraph patterns
+  - [x] Configure pytest (including async support) and benchmarking plugins
+  - [x] Document fixture expectations in `docs/` for contributors
 
-- [ ] Implement PyO3 introspection
-  - [ ] Extract node functions and metadata
-  - [ ] Extract edge definitions and routing
-  - [ ] Parse state schema from TypedDict
-  - [ ] Capture conditional edge functions
-  - [ ] Extract tool definitions
+- [x] Implement PyO3 introspection
+  - [x] Extract node functions and metadata
+  - [x] Extract edge definitions and routing
+  - [x] Parse state schema from TypedDict
+  - [x] Capture conditional edge functions
+  - [ ] Extract tool definitions (deferred to Phase 4)
 
-- [ ] Create type mapping system
-  - [ ] Map Python types to Rust types
-  - [ ] Handle complex types (List, Dict, Optional)
-  - [ ] Support custom types and dataclasses
-  - [ ] Generate proper serde derives
+- [x] Create type mapping system
+  - [x] Map Python types to Rust types
+  - [x] Handle complex types (List, Dict, Optional)
+  - [x] Support custom types and dataclasses
+  - [x] Generate proper serde derives
 
 ## Phase 3: Code Generation 📝
 - [ ] Basic graph generation
@@ -125,12 +125,12 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
 
 ## Quick Wins 🎯
 These can be done in parallel:
-- [ ] Add GitHub Actions CI/CD
-- [ ] Set up code coverage
-- [ ] Create CONTRIBUTING.md
-- [ ] Add badges to README
-- [ ] Create Discord/Slack community
-- [ ] Write blog post announcement
+- [x] Add GitHub Actions CI/CD
+- [x] Set up code coverage
+- [x] Create CONTRIBUTING.md
+- [x] Add badges to README
+- [ ] Create Discord/Slack community (future)
+- [ ] Write blog post announcement (when ready for v0.1.0)
 
 ## Known Issues & Limitations 🐛
 - [ ] PyO3 requires Python 3.8+
