@@ -1,5 +1,4 @@
 /// Code formatting utilities for generated Rust code
-
 use std::collections::HashSet;
 
 /// Format generated code with proper imports and structure

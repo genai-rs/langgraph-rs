@@ -265,10 +265,7 @@ mod tests {
     #[test]
     fn test_custom_mapper() {
         let mut mapper = TypeMapper::new();
-        mapper.add_mapping(
-            "UserId".to_string(),
-            RustType::Custom("UserId".to_string()),
-        );
+        mapper.add_mapping("UserId".to_string(), RustType::Custom("UserId".to_string()));
 
         assert_eq!(
             mapper.map_type("UserId"),

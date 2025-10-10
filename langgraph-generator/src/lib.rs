@@ -1,6 +1,6 @@
 use anyhow::Result;
-use langgraph_inspector::{EdgeInfo, FieldInfo, GraphInfo, NodeInfo};
 use langgraph_inspector::type_mapping::{map_python_type, RustType};
+use langgraph_inspector::{EdgeInfo, FieldInfo, GraphInfo, NodeInfo};
 use std::collections::HashSet;
 
 mod code_formatter;
@@ -128,12 +128,7 @@ async fn {}_node(mut state: GraphState) -> Result<GraphState> {{
 
     Ok(state)
 }}"#,
-            doc,
-            node.func_name,
-            node.signature,
-            node.name,
-            source_comment,
-            node.name
+            doc, node.func_name, node.signature, node.name, source_comment, node.name
         )
     }
 

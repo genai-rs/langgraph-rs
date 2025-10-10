@@ -128,7 +128,9 @@ fn extract_function_name(node_obj: &Bound<'_, PyAny>) -> PyResult<String> {
 
 /// Extract function signature
 fn extract_function_signature(node_obj: &Bound<'_, PyAny>) -> PyResult<String> {
-    let func = node_obj.getattr("func").unwrap_or_else(|_| node_obj.clone());
+    let func = node_obj
+        .getattr("func")
+        .unwrap_or_else(|_| node_obj.clone());
 
     // Try to get signature using inspect module
     let py = node_obj.py();
@@ -140,7 +142,10 @@ fn extract_function_signature(node_obj: &Bound<'_, PyAny>) -> PyResult<String> {
 
 /// Extract docstring from a function
 fn extract_docstring(node_obj: &Bound<'_, PyAny>) -> Option<String> {
-    let func = node_obj.getattr("func").ok().unwrap_or_else(|| node_obj.clone());
+    let func = node_obj
+        .getattr("func")
+        .ok()
+        .unwrap_or_else(|| node_obj.clone());
     let doc = func.getattr("__doc__").ok()?;
 
     if doc.is_none() {
@@ -153,7 +158,10 @@ fn extract_docstring(node_obj: &Bound<'_, PyAny>) -> Option<String> {
 /// Extract source code hint for the function
 fn extract_source_hint(node_obj: &Bound<'_, PyAny>) -> Option<String> {
     let py = node_obj.py();
-    let func = node_obj.getattr("func").ok().unwrap_or_else(|| node_obj.clone());
+    let func = node_obj
+        .getattr("func")
+        .ok()
+        .unwrap_or_else(|| node_obj.clone());
 
     // Try to get source file and line number
     let inspect = py.import_bound("inspect").ok()?;
@@ -341,7 +349,9 @@ fn extract_entry_point(graph: &Bound<'_, PyAny>) -> PyResult<String> {
 }
 
 /// Extract conditional edges from the graph
-fn extract_conditional_edges(graph: &Bound<'_, PyAny>) -> PyResult<HashMap<String, ConditionalEdge>> {
+fn extract_conditional_edges(
+    graph: &Bound<'_, PyAny>,
+) -> PyResult<HashMap<String, ConditionalEdge>> {
     let mut conditional_edges = HashMap::new();
 
     // Try to get conditional edges from builder
@@ -414,7 +424,10 @@ fn extract_branch_mappings(cond_edge: &Bound<'_, PyAny>) -> PyResult<HashMap<Str
 
 /// Capture execution trace of a LangGraph
 #[pyfunction]
-pub fn trace_execution(graph: &Bound<'_, PyAny>, input_data: &Bound<'_, PyAny>) -> PyResult<String> {
+pub fn trace_execution(
+    graph: &Bound<'_, PyAny>,
+    input_data: &Bound<'_, PyAny>,
+) -> PyResult<String> {
     // Compile the graph
     let compiled = graph.call_method0("compile")?;
 
