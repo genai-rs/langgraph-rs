@@ -12,7 +12,7 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
 
 ## Phase 2: Python Introspection ✅ (100% Complete - MVP)
 - [x] Set up Python test environment
-  - [x] Create requirements.txt with LangGraph dependencies
+  - [x] Create pyproject.toml with LangGraph dependencies (using uv)
   - [x] Set up Python virtual environment scripts
   - [x] Add test fixtures with various LangGraph patterns
   - [x] Configure pytest (including async support) and benchmarking plugins

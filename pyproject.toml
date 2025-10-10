@@ -1,37 +1,50 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "langgraph-rs-test"
+name = "langgraph-rs"
 version = "0.1.0"
-description = "Python test fixtures for langgraph-rs"
+description = "LangGraph Python to Rust transpiler - Python dependencies"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT OR Apache-2.0"}
+authors = [
+    {name = "Tim van Wassenhove", email = "tim.van.wassenhove@gmail.com"}
+]
 
-[tool.pytest.ini_options]
-minversion = "8.0"
-testpaths = ["tests"]
-asyncio_mode = "auto"
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-benchmark>=4.0.0",
+    "memory-profiler>=0.61.0",
+]
+
+dev = [
+    "mypy>=1.8.0",
+    "typing-extensions>=4.9.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0",
+    "ipython>=8.20.0",
+    "ipdb>=0.13.13",
+]
+
+all = [
+    "langgraph-rs[test,dev]",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.black]
 line-length = 100
 target-version = ['py38', 'py39', 'py310', 'py311']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
 
 [tool.ruff]
 line-length = 100
@@ -39,22 +52,21 @@ target-version = "py38"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
 ]
 ignore = [
     "E501",  # line too long (handled by black)
     "B008",  # do not perform function calls in argument defaults
-    "C901",  # too complex
 ]
 
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
+[tool.ruff.lint.isort]
+known-first-party = ["langgraph"]
 
 [tool.mypy]
 python_version = "3.8"
@@ -62,3 +74,16 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=tests",
+    "--cov-report=term-missing",
+]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"

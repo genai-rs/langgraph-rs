@@ -12,6 +12,7 @@ By participating in this project, you agree to maintain a respectful and collabo
 
 - Rust 1.75 or later
 - Python 3.8 or later
+- [uv](https://github.com/astral-sh/uv) - Fast Python package installer
 - Git
 
 ### Setting Up Your Development Environment
@@ -22,19 +23,24 @@ By participating in this project, you agree to maintain a respectful and collabo
    cd langgraph-rs
    ```
 
-2. **Set up Python environment:**
+2. **Install uv (if not already installed):**
    ```bash
-   ./scripts/setup-python.sh  # Unix/Mac
-   # or
-   .\scripts\setup-python.ps1 # Windows
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-3. **Build the project:**
+3. **Set up Python environment:**
+   ```bash
+   ./scripts/setup-python.sh  # Unix/Mac (uses uv)
+   # or manually:
+   uv sync --all-extras
+   ```
+
+4. **Build the project:**
    ```bash
    cargo build --workspace
    ```
 
-4. **Run tests:**
+5. **Run tests:**
    ```bash
    cargo test --workspace
    ```

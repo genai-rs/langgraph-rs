@@ -1,3 +1,14 @@
+# DEPRECATED: This file is kept for backwards compatibility only.
+# Please use pyproject.toml and uv instead.
+#
+# To install dependencies with uv:
+#   uv sync --all-extras
+#
+# To install with pip (legacy):
+#   pip install -e ".[all]"
+#
+# See pyproject.toml for the canonical dependency list.
+
 # Core dependencies
 langgraph>=0.2.0
 langchain>=0.3.0
