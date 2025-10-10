@@ -31,44 +31,44 @@ Transform LangGraph Python workflows into high-performance Rust implementations 
   - [x] Support custom types and dataclasses
   - [x] Generate proper serde derives
 
-## Phase 3: Code Generation 📝
-- [ ] Basic graph generation
-  - [ ] Generate state structs
-  - [ ] Generate node functions (stubs)
-  - [ ] Create graph executor
-  - [ ] Add proper error handling
+## Phase 3: Code Generation 📝 (Complete)
+- [x] Basic graph generation
+  - [x] Generate state structs
+  - [x] Generate node functions (stubs)
+  - [x] Create graph executor
+  - [x] Add proper error handling
 
-- [ ] Advanced features
-  - [ ] Conditional routing implementation
-  - [ ] Tool node generation
-  - [ ] Async/await patterns
-  - [ ] Streaming support
-  - [ ] Checkpointing/persistence
+- [x] Advanced features
+  - [x] Conditional routing implementation
+  - [x] Tool node generation (stubs)
+  - [x] Async/await patterns
+  - [ ] Streaming support (deferred to Phase 6)
+  - [ ] Checkpointing/persistence (deferred to Phase 6)
 
-- [ ] Code quality
-  - [ ] Format generated code with rustfmt
-  - [ ] Add comprehensive comments
-  - [ ] Generate documentation
-  - [ ] Include original Python as reference
+- [x] Code quality
+  - [x] Format generated code with rustfmt
+  - [x] Add comprehensive comments
+  - [x] Generate documentation
+  - [x] Include original Python as reference
 
-## Phase 4: Runtime Support 🏃
-- [ ] Core runtime
-  - [ ] Implement state management
-  - [ ] Add execution tracing
-  - [ ] Error recovery mechanisms
-  - [ ] Performance monitoring
+## Phase 4: Runtime Support 🏃 (Basic Complete)
+- [x] Core runtime
+  - [x] Implement state management
+  - [x] Add execution tracing
+  - [ ] Error recovery mechanisms (basic done, advanced deferred)
+  - [ ] Performance monitoring (deferred to Phase 6)
 
-- [ ] LLM integrations
-  - [ ] OpenAI provider
-  - [ ] Anthropic provider
-  - [ ] Local model support (Ollama)
-  - [ ] Custom provider trait
+- [x] LLM integrations (basic)
+  - [x] OpenAI provider (basic implementation)
+  - [ ] Anthropic provider (deferred)
+  - [ ] Local model support (Ollama) (deferred)
+  - [x] Custom provider trait
 
-- [ ] Tool system
-  - [ ] HTTP tool implementation
-  - [ ] Database tools
-  - [ ] File system tools
-  - [ ] Custom tool framework
+- [x] Tool system (traits defined)
+  - [ ] HTTP tool implementation (deferred)
+  - [ ] Database tools (deferred)
+  - [ ] File system tools (deferred)
+  - [x] Custom tool framework (trait defined)
 
 ## Phase 5: Validation & Testing 🧪
 - [ ] Validation framework
