@@ -1,5 +1,12 @@
 # langgraph-rs
 
+[![CI](https://github.com/genai-rs/langgraph-rs/workflows/CI/badge.svg)](https://github.com/genai-rs/langgraph-rs/actions)
+[![codecov](https://codecov.io/gh/genai-rs/langgraph-rs/branch/main/graph/badge.svg)](https://codecov.io/gh/genai-rs/langgraph-rs)
+[![Crates.io](https://img.shields.io/crates/v/langgraph-rs)](https://crates.io/crates/langgraph-rs)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+
 Convert LangGraph (Python) workflows into high-performance Rust code for production-ready LLM applications.
 
 ## Overview
@@ -15,24 +22,33 @@ Convert LangGraph (Python) workflows into high-performance Rust code for product
 
 ## Current Implementation Status
 
-### Completed
+### ✅ Phase 1: Foundation (Complete)
 - Basic project structure and Cargo workspace
 - CLI skeleton with subcommands (convert, inspect, validate, visualize)
 - Module structure for inspector, generator, runtime, and CLI
-- Basic type definitions and traits
 - Example workflows (Python input and expected Rust output)
 
-### In Progress
-- PyO3 introspection implementation
-- Actual Python-to-Rust conversion logic
-- Runtime execution framework
+### 🚧 Phase 2: Python Introspection (In Progress)
+- ✅ Python test environment and fixtures
+- ✅ PyO3 introspection for nodes, edges, and state
+- ✅ Type mapping system (Python → Rust)
+- ✅ Conditional edge extraction
+- ⏳ Tool definitions extraction
+- ✅ CI/CD with GitHub Actions
+- ✅ Code coverage setup
 
-### Not Yet Implemented
-- Actual Python workflow parsing
-- Code generation from real LangGraph instances
-- Validation and testing framework
+### 📝 Phase 3: Code Generation (Not Yet Started)
+- Rust state struct generation
+- Node function stub generation
+- Graph executor generation
+- Error handling
+- Formatting and documentation
+
+### 🏃 Phase 4: Runtime Support (Not Yet Started)
+- State management
 - LLM provider integrations
-- Production optimizations
+- Tool system
+- Execution tracing
 
 ## Architecture
 
