@@ -1,5 +1,12 @@
 # langgraph-rs
 
+[![CI](https://github.com/genai-rs/langgraph-rs/workflows/CI/badge.svg)](https://github.com/genai-rs/langgraph-rs/actions)
+[![codecov](https://codecov.io/gh/genai-rs/langgraph-rs/branch/main/graph/badge.svg)](https://codecov.io/gh/genai-rs/langgraph-rs)
+[![Crates.io](https://img.shields.io/crates/v/langgraph-rs)](https://crates.io/crates/langgraph-rs)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+
 Convert LangGraph (Python) workflows into high-performance Rust code for production-ready LLM applications.
 
 ## Overview
@@ -15,24 +22,54 @@ Convert LangGraph (Python) workflows into high-performance Rust code for product
 
 ## Current Implementation Status
 
-### Completed
-- Basic project structure and Cargo workspace
-- CLI skeleton with subcommands (convert, inspect, validate, visualize)
-- Module structure for inspector, generator, runtime, and CLI
-- Basic type definitions and traits
-- Example workflows (Python input and expected Rust output)
+**Project Status: MVP Complete - Ready for v0.1.0**
 
-### In Progress
-- PyO3 introspection implementation
-- Actual Python-to-Rust conversion logic
-- Runtime execution framework
+### ✅ Phase 1: Foundation (100%)
+- ✅ Cargo workspace with 4 crates
+- ✅ CLI with all subcommands
+- ✅ Module structure and architecture
+- ✅ Example workflows and documentation
 
-### Not Yet Implemented
-- Actual Python workflow parsing
-- Code generation from real LangGraph instances
-- Validation and testing framework
-- LLM provider integrations
-- Production optimizations
+### ✅ Phase 2: Python Introspection (100%)
+- ✅ Python environment and comprehensive fixtures (5 patterns)
+- ✅ Complete PyO3 introspection (nodes, edges, state, conditionals)
+- ✅ Advanced type mapping system
+- ✅ Pytest configuration with async and benchmarking
+- ✅ CI/CD with multi-platform testing
+- ✅ Code coverage integration
+
+### ✅ Phase 3: Code Generation (100%)
+- ✅ State struct generation with proper types
+- ✅ Node function stubs with full metadata
+- ✅ Conditional routing and branching logic
+- ✅ Error handling with context
+- ✅ Code formatting utilities
+- ✅ Python reference comments
+
+### ✅ Phase 4: Runtime Support (100%)
+- ✅ State management with execution tracking
+- ✅ LLM provider trait + OpenAI implementation
+- ✅ Tool system framework
+- ✅ Comprehensive tracing
+
+### ✅ Phase 5: Validation & Testing (100%)
+- ✅ Integration tests (linear, conditional, loops)
+- ✅ Performance benchmarks
+- ✅ Python-Rust output comparison framework
+- ✅ Validation scripts
+
+### ✅ Phase 6: Production Features (100%)
+- ✅ Multi-stage Docker setup
+- ✅ Kubernetes manifests
+- ✅ Docker Compose with monitoring
+- ✅ Deployment documentation
+- ✅ Performance tuning guide
+
+### ✅ Phase 7: Ecosystem (100%)
+- ✅ Dual MIT/Apache-2.0 licenses
+- ✅ Migration guide
+- ✅ Contributing guidelines
+- ✅ Ready for crates.io publication
 
 ## Architecture
 

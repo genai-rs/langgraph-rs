@@ -49,7 +49,8 @@ impl GraphState {
     }
 
     pub fn set<T: Serialize>(&mut self, key: &str, value: T) -> Result<()> {
-        self.data.insert(key.to_string(), serde_json::to_value(value)?);
+        self.data
+            .insert(key.to_string(), serde_json::to_value(value)?);
         Ok(())
     }
 }

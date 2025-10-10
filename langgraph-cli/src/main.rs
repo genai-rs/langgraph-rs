@@ -92,16 +92,28 @@ async fn main() -> Result<()> {
         .init();
 
     match cli.command {
-        Commands::Convert { input, output, with_tests } => {
+        Commands::Convert {
+            input,
+            output,
+            with_tests,
+        } => {
             convert_workflow(input, output, with_tests).await?;
         }
         Commands::Inspect { graph, format } => {
             inspect_graph(graph, format).await?;
         }
-        Commands::Validate { python, rust, test_data } => {
+        Commands::Validate {
+            python,
+            rust,
+            test_data,
+        } => {
             validate_conversion(python, rust, test_data).await?;
         }
-        Commands::Visualize { graph, format, output } => {
+        Commands::Visualize {
+            graph,
+            format,
+            output,
+        } => {
             visualize_graph(graph, format, output).await?;
         }
     }
@@ -171,7 +183,11 @@ async fn inspect_graph(graph: PathBuf, format: String) -> Result<()> {
     Ok(())
 }
 
-async fn validate_conversion(python: PathBuf, rust: PathBuf, test_data: Option<PathBuf>) -> Result<()> {
+async fn validate_conversion(
+    python: PathBuf,
+    rust: PathBuf,
+    test_data: Option<PathBuf>,
+) -> Result<()> {
     info!("Validating conversion...");
     info!("Python: {:?}", python);
     info!("Rust: {:?}", rust);
@@ -244,11 +260,13 @@ fn extract_graph_info(input: &PathBuf) -> Result<String> {
 }
 
 fn generate_cargo_toml(input: &PathBuf) -> String {
-    let name = input.file_stem()
+    let name = input
+        .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("generated_graph");
 
-    format!(r#"[package]
+    format!(
+        r#"[package]
 name = "{}"
 version = "0.1.0"
 edition = "2021"
@@ -260,7 +278,9 @@ serde_json = "1.0"
 anyhow = "1.0"
 async-trait = "0.1"
 langgraph-runtime = "0.1"
-"#, name)
+"#,
+        name
+    )
 }
 
 fn generate_test_code(_graph_json: &str) -> Result<String> {
@@ -275,7 +295,8 @@ mod tests {
         // TODO: Add assertions
     }
 }
-"#.to_string())
+"#
+    .to_string())
 }
 
 fn generate_mermaid(graph_info: &langgraph_inspector::GraphInfo) -> String {
