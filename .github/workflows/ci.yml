@@ -134,17 +134,17 @@ jobs:
         run: |
           for fixture in tests/fixtures/*.py; do
             echo "Running $fixture..."
-            python "$fixture"
+            uv run python "$fixture"
           done
 
       - name: Type check with mypy
-        run: mypy tests/fixtures/
+        run: uv run mypy tests/fixtures/
         continue-on-error: true
 
       - name: Lint with ruff
-        run: ruff check tests/fixtures/
+        run: uv run ruff check tests/fixtures/
         continue-on-error: true
 
       - name: Format check with black
-        run: black --check tests/fixtures/
+        run: uv run black --check tests/fixtures/
         continue-on-error: true
