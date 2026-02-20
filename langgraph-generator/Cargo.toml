@@ -12,7 +12,7 @@ serde_json.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-quote = "1.0"
-syn = "2.0"
-proc-macro2 = "1.0"
+quote = "1.0.44"
+syn = "2.0.117"
+proc-macro2 = "1.0.106"
 langgraph-inspector = { path = "../langgraph-inspector" }
