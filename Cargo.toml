@@ -27,7 +27,7 @@ anyhow = "^1.0"
 thiserror = "^2.0.18"
 tracing = "^0.1"
 tracing-subscriber = { version = "^0.3", features = ["env-filter"] }
-clap = { version = "^4.5", features = ["derive"] }
+clap = { version = "^4.6.0", features = ["derive"] }
 pyo3 = { version = "^0.28.0", features = ["auto-initialize"] }
 reqwest = { version = "^0.13.2", features = ["json"] }
 async-trait = "^0.1"
