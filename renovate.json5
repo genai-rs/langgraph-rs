@@ -90,7 +90,7 @@
       minimumReleaseAge: '0 days',
     },
     {
-      description: 'Core dependencies - manual review required',
+      description: 'Core dependencies',
       matchPackageNames: [
         'tokio',
         'serde',
@@ -101,10 +101,7 @@
         'dependencies',
         'core',
       ],
-      automerge: false,
-      assignees: [
-        'timvw',
-      ],
+      automerge: true,
     },
     {
       description: 'Dev dependencies - auto-merge all',
