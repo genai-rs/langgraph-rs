@@ -13,6 +13,6 @@ anyhow.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 quote = "1.0.47"
-syn = "2.0.119"
+syn = "3.0.5"
 proc-macro2 = "1.0.107"
 langgraph-inspector = { path = "../langgraph-inspector" }
