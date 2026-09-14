@@ -29,7 +29,7 @@ tracing = "^0.1.44"
 tracing-subscriber = { version = "^0.3.23", features = ["env-filter"] }
 clap = { version = "^4.6.6", features = ["derive"] }
 pyo3 = { version = "^0.29.2", features = ["auto-initialize"] }
-reqwest = { version = "^0.13.4", features = ["json"] }
+reqwest = { version = "^0.13.5", features = ["json"] }
 async-trait = "^0.1.92"
 petgraph = "^0.8.3"
 
