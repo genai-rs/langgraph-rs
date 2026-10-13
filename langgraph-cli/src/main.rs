@@ -1,12 +1,13 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
 #[command(name = "langgraph-rs")]
+#[command(version)]
 #[command(about = "Convert LangGraph Python workflows to Rust", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -230,7 +231,7 @@ async fn visualize_graph(graph: PathBuf, format: String, output: Option<PathBuf>
     Ok(())
 }
 
-fn extract_graph_info(input: &PathBuf) -> Result<String> {
+fn extract_graph_info(_input: &Path) -> Result<String> {
     // TODO: Actually run Python and extract graph info
     // For now, return a placeholder
     Ok(serde_json::to_string_pretty(&serde_json::json!({
@@ -259,7 +260,7 @@ fn extract_graph_info(input: &PathBuf) -> Result<String> {
     }))?)
 }
 
-fn generate_cargo_toml(input: &PathBuf) -> String {
+fn generate_cargo_toml(input: &Path) -> String {
     let name = input
         .file_stem()
         .and_then(|s| s.to_str())

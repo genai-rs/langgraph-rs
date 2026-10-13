@@ -1,7 +1,4 @@
 /// Integration test for linear workflow conversion
-use langgraph_inspector::extract_graph_info;
-use langgraph_generator::CodeGenerator;
-use std::process::Command;
 
 #[test]
 fn test_linear_workflow_conversion() {
@@ -63,11 +60,7 @@ fn test_linear_workflow_conversion() {
 }
 
 #[test]
-fn test_generated_code_compiles() {
-    // Test that generated code is syntactically valid Rust
-    // This would require actually compiling the generated code
-    // For now, we just verify structure
-
+fn test_generated_code_has_expected_structure() {
     let mock_graph_json = r#"{
         "nodes": [{"name": "test", "func_name": "test_node", "signature": "", "docstring": null, "source_hint": null}],
         "edges": [],
@@ -77,5 +70,8 @@ fn test_generated_code_compiles() {
     }"#;
 
     let result = langgraph_generator::generate_from_json(mock_graph_json);
-    assert!(result.is_ok());
+    let code = result.unwrap();
+    assert!(code.contains("pub struct GraphState"));
+    assert!(code.contains("value: i64"));
+    assert!(code.contains("async fn test_node"));
 }

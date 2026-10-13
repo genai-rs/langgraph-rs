@@ -1,11 +1,13 @@
 """Conditional workflow with branching logic."""
 
-from typing import TypedDict, Literal
-from langgraph.graph import StateGraph, END
+from typing import Literal, TypedDict
+
+from langgraph.graph import END, StateGraph
 
 
 class ConditionalState(TypedDict):
     """State with condition tracking."""
+
     value: int
     path_taken: list[str]
     should_continue: bool
@@ -50,7 +52,9 @@ def should_continue(state: ConditionalState) -> Literal["start", "end"]:
 
 
 # Build the graph
-workflow = StateGraph(ConditionalState)
+workflow: StateGraph[ConditionalState, None, ConditionalState, ConditionalState] = StateGraph(
+    ConditionalState
+)
 
 # Add nodes
 workflow.add_node("start", start_node)
@@ -62,33 +66,12 @@ workflow.add_node("end", end_node)
 workflow.set_entry_point("start")
 
 # Add conditional routing
-workflow.add_conditional_edges(
-    "start",
-    route_based_on_value,
-    {
-        "high": "high",
-        "low": "low"
-    }
-)
+workflow.add_conditional_edges("start", route_based_on_value, {"high": "high", "low": "low"})
 
 # Both paths can loop back or end
-workflow.add_conditional_edges(
-    "high",
-    should_continue,
-    {
-        "start": "start",
-        "end": "end"
-    }
-)
+workflow.add_conditional_edges("high", should_continue, {"start": "start", "end": "end"})
 
-workflow.add_conditional_edges(
-    "low",
-    should_continue,
-    {
-        "start": "start",
-        "end": "end"
-    }
-)
+workflow.add_conditional_edges("low", should_continue, {"start": "start", "end": "end"})
 
 workflow.add_edge("end", END)
 
@@ -97,7 +80,7 @@ graph = workflow.compile()
 
 
 if __name__ == "__main__":
-    initial_state = {"value": 25, "path_taken": [], "should_continue": True}
+    initial_state: ConditionalState = {"value": 25, "path_taken": [], "should_continue": True}
     result = graph.invoke(initial_state)
     print(f"Final value: {result['value']}")
     print(f"Path taken: {' -> '.join(result['path_taken'])}")

@@ -32,18 +32,18 @@ pub fn format_generated_code(
         code.push_str(&format!("use {};\n", import));
     }
 
-    code.push_str("\n");
+    code.push('\n');
 
     // Add state struct
-    code.push_str(&state_struct);
+    code.push_str(state_struct);
     code.push_str("\n\n");
 
     // Add node functions
-    code.push_str(&node_functions);
+    code.push_str(node_functions);
     code.push_str("\n\n");
 
     // Add executor
-    code.push_str(&executor);
+    code.push_str(executor);
     code.push_str("\n\n");
 
     // Add main entry point
@@ -56,21 +56,6 @@ pub async fn run_graph(initial_state: GraphState) -> Result<GraphState> {
     );
 
     code
-}
-
-/// Add proper indentation to code
-pub fn indent(code: &str, level: usize) -> String {
-    let indent_str = "    ".repeat(level);
-    code.lines()
-        .map(|line| {
-            if line.trim().is_empty() {
-                String::new()
-            } else {
-                format!("{}{}", indent_str, line)
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 /// Generate documentation comment

@@ -1,11 +1,13 @@
 """Simple linear workflow - no branching, just sequential nodes."""
 
 from typing import TypedDict
-from langgraph.graph import StateGraph, END
+
+from langgraph.graph import END, StateGraph
 
 
 class SimpleState(TypedDict):
     """Simple state with just a counter and messages."""
+
     counter: int
     messages: list[str]
 
@@ -32,7 +34,7 @@ def node_c(state: SimpleState) -> SimpleState:
 
 
 # Build the graph
-workflow = StateGraph(SimpleState)
+workflow: StateGraph[SimpleState, None, SimpleState, SimpleState] = StateGraph(SimpleState)
 
 # Add nodes
 workflow.add_node("a", node_a)
@@ -52,7 +54,7 @@ graph = workflow.compile()
 
 
 if __name__ == "__main__":
-    initial_state = {"counter": 0, "messages": []}
+    initial_state: SimpleState = {"counter": 0, "messages": []}
     result = graph.invoke(initial_state)
     print(f"Final counter: {result['counter']}")
     print(f"Messages: {result['messages']}")

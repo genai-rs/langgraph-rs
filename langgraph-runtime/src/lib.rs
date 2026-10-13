@@ -1,8 +1,9 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 use tracing::{debug, info, instrument};
 
@@ -40,18 +41,24 @@ impl GraphState {
     }
 
     pub fn get<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Result<T> {
-        self.data
+        let value = self
+            .data
             .get(key)
-            .ok_or_else(|| anyhow::anyhow!("Key not found: {}", key))?
-            .clone()
-            .try_into()
-            .map_err(|e| anyhow::anyhow!("Failed to deserialize: {}", e))
+            .ok_or_else(|| anyhow::anyhow!("Key not found: {}", key))?;
+        serde_json::from_value(value.clone())
+            .with_context(|| format!("Failed to deserialize key: {}", key))
     }
 
     pub fn set<T: Serialize>(&mut self, key: &str, value: T) -> Result<()> {
         self.data
             .insert(key.to_string(), serde_json::to_value(value)?);
         Ok(())
+    }
+}
+
+impl Default for GraphState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -62,11 +69,29 @@ pub struct GraphExecutor {
     entry_point: String,
 }
 
-#[derive(Debug, Clone)]
+pub type EdgeCondition = Box<dyn Fn(&GraphState) -> bool + Send + Sync>;
+
 pub struct Edge {
     pub from: String,
     pub to: String,
-    pub condition: Option<Box<dyn Fn(&GraphState) -> bool + Send + Sync>>,
+    pub condition: Option<EdgeCondition>,
+}
+
+impl fmt::Debug for Edge {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Edge")
+            .field("from", &self.from)
+            .field("to", &self.to)
+            .field("conditional", &self.condition.is_some())
+            .finish()
+    }
+}
+
+impl Default for GraphExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GraphExecutor {
@@ -229,5 +254,66 @@ impl LLMProvider for OpenAIProvider {
                 .unwrap_or("")
                 .to_string(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    struct Payload {
+        count: u64,
+        messages: Vec<String>,
+    }
+
+    #[test]
+    fn state_deserializes_structured_values() {
+        let payload = Payload {
+            count: 42,
+            messages: vec!["hello".into()],
+        };
+        let mut state = GraphState::new();
+        state.set("payload", &payload).unwrap();
+        assert_eq!(state.get::<Payload>("payload").unwrap(), payload);
+    }
+
+    #[test]
+    fn state_reports_missing_keys_and_incompatible_values() {
+        let mut state = GraphState::new();
+        assert!(state
+            .get::<u64>("missing")
+            .unwrap_err()
+            .to_string()
+            .contains("Key not found"));
+        state.set("count", "not a number").unwrap();
+        let error = state.get::<u64>("count").unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("Failed to deserialize key: count"));
+        assert!(error.root_cause().to_string().contains("invalid type"));
+    }
+
+    #[test]
+    fn conditional_edges_select_a_matching_destination() {
+        let mut graph = GraphExecutor::new();
+        graph.edges.push(Edge {
+            from: "start".into(),
+            to: "positive".into(),
+            condition: Some(Box::new(|state| state.get::<i64>("count").unwrap() > 0)),
+        });
+        graph.add_edge("start", "fallback");
+        let mut state = GraphState::new();
+        state.set("count", 1).unwrap();
+        assert_eq!(
+            graph.find_next_node("start", &state).as_deref(),
+            Some("positive")
+        );
+        state.set("count", -1).unwrap();
+        assert_eq!(
+            graph.find_next_node("start", &state).as_deref(),
+            Some("fallback")
+        );
+        assert!(format!("{:?}", graph.edges[0]).contains("conditional: true"));
     }
 }

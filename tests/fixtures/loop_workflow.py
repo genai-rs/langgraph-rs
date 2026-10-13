@@ -1,11 +1,13 @@
 """Workflow with explicit looping behavior."""
 
-from typing import TypedDict, Literal
-from langgraph.graph import StateGraph, END
+from typing import Literal, TypedDict
+
+from langgraph.graph import END, StateGraph
 
 
 class LoopState(TypedDict):
     """State for tracking loop iterations."""
+
     iteration: int
     max_iterations: int
     accumulated_value: int
@@ -16,7 +18,7 @@ def initialize(state: LoopState) -> LoopState:
     """Set up initial state."""
     state["iteration"] = 0
     state["accumulated_value"] = 0
-    state["history"].append(f"Initialized")
+    state["history"].append("Initialized")
     return state
 
 
@@ -24,7 +26,9 @@ def loop_body(state: LoopState) -> LoopState:
     """Execute loop iteration."""
     state["iteration"] += 1
     state["accumulated_value"] += state["iteration"]
-    state["history"].append(f"Iteration {state['iteration']}: accumulated={state['accumulated_value']}")
+    state["history"].append(
+        f"Iteration {state['iteration']}: accumulated={state['accumulated_value']}"
+    )
     return state
 
 
@@ -43,7 +47,7 @@ def finalize(state: LoopState) -> LoopState:
 
 
 # Build the graph
-workflow = StateGraph(LoopState)
+workflow: StateGraph[LoopState, None, LoopState, LoopState] = StateGraph(LoopState)
 
 # Add nodes
 workflow.add_node("initialize", initialize)
@@ -60,10 +64,7 @@ workflow.add_edge("initialize", "loop_body")
 workflow.add_conditional_edges(
     "loop_body",
     check_continue,
-    {
-        "loop_body": "loop_body",  # Loop back to self
-        "finalize": "finalize"
-    }
+    {"loop_body": "loop_body", "finalize": "finalize"},  # Loop back to self
 )
 
 workflow.add_edge("finalize", END)
@@ -73,16 +74,16 @@ graph = workflow.compile()
 
 
 if __name__ == "__main__":
-    initial_state = {
+    initial_state: LoopState = {
         "iteration": 0,
         "max_iterations": 5,
         "accumulated_value": 0,
-        "history": []
+        "history": [],
     }
 
     result = graph.invoke(initial_state)
     print(f"Completed {result['iteration']} iterations")
     print(f"Final accumulated value: {result['accumulated_value']}")
     print("\nHistory:")
-    for entry in result['history']:
+    for entry in result["history"]:
         print(f"  {entry}")
