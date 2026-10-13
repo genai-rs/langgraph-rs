@@ -96,7 +96,6 @@ jobs:
 
       - name: Build and smoke-test CLI
         env:
-          RUSTFLAGS: ${{ startsWith(matrix.os, 'macos') && '-C link-arg=-Wl,-dead_strip_dylibs' || '' }}
           PYO3_PYTHON: ${{ steps.python.outputs.python-path }}
           TARGET: ${{ matrix.target }}
           EXTENSION: ${{ matrix.extension }}

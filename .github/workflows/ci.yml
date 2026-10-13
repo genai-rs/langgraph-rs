@@ -50,7 +50,7 @@ jobs:
           enable-cache: true
 
       - name: Install Python dependencies
-        run: uv sync --frozen --all-extras
+        run: uv sync --locked --all-extras
 
       - name: Cache cargo registry
         uses: actions/cache@v6
@@ -77,6 +77,9 @@ jobs:
         env:
           PYO3_PYTHON: ${{ steps.python.outputs.python-path }}
         run: cargo clippy --locked --all-targets --all-features --workspace -- -D warnings
+
+      - name: Check standalone CLI without Python bindings
+        run: cargo clippy --locked --package langgraph-cli --all-targets -- -D warnings
 
       - name: Build
         env:
@@ -113,7 +116,7 @@ jobs:
           enable-cache: true
 
       - name: Install Python dependencies
-        run: uv sync --frozen --all-extras
+        run: uv sync --locked --all-extras
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
@@ -149,23 +152,23 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --frozen --all-extras
+        run: uv sync --locked --all-extras
 
       - name: Run Python fixtures
         run: |
           for fixture in tests/fixtures/*.py; do
             echo "Running $fixture..."
-            uv run --frozen --all-extras python "$fixture"
+            uv run --locked --all-extras python "$fixture"
           done
 
       - name: Type check with mypy
-        run: uv run --frozen --all-extras mypy tests/fixtures/
+        run: uv run --locked --all-extras mypy tests/fixtures/
 
       - name: Lint with ruff
-        run: uv run --frozen --all-extras ruff check tests/fixtures/
+        run: uv run --locked --all-extras ruff check tests/fixtures/
 
       - name: Format check with black
-        run: uv run --frozen --all-extras black --check tests/fixtures/
+        run: uv run --locked --all-extras black --check tests/fixtures/
 
   ci:
     name: CI
