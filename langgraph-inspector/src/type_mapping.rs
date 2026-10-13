@@ -79,7 +79,7 @@ pub fn map_python_type(py_type: &str) -> RustType {
                 parse_dict_type(py_type)
             } else if py_type.starts_with("Optional[") {
                 parse_optional_type(py_type)
-            } else if py_type.contains("|") {
+            } else if py_type.contains('|') {
                 parse_union_type(py_type)
             } else {
                 // Custom type

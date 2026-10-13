@@ -86,9 +86,9 @@ fn extract_nodes(graph: &Bound<'_, PyAny>) -> PyResult<Vec<NodeInfo>> {
 
     // Iterate over nodes
     let items = nodes_dict.call_method0("items")?;
-    for item in items.iter()? {
+    for item in items.try_iter()? {
         let item = item?;
-        let tuple = item.downcast::<pyo3::types::PyTuple>()?;
+        let tuple = item.cast::<pyo3::types::PyTuple>()?;
         let name: String = tuple.get_item(0)?.extract()?;
         let node_obj = tuple.get_item(1)?;
 
@@ -134,7 +134,7 @@ fn extract_function_signature(node_obj: &Bound<'_, PyAny>) -> PyResult<String> {
 
     // Try to get signature using inspect module
     let py = node_obj.py();
-    let inspect = py.import_bound("inspect")?;
+    let inspect = py.import("inspect")?;
     let signature = inspect.call_method1("signature", (func,))?;
 
     signature.call_method0("__str__")?.extract()
@@ -164,12 +164,12 @@ fn extract_source_hint(node_obj: &Bound<'_, PyAny>) -> Option<String> {
         .unwrap_or_else(|| node_obj.clone());
 
     // Try to get source file and line number
-    let inspect = py.import_bound("inspect").ok()?;
+    let inspect = py.import("inspect").ok()?;
     let source_file = inspect.call_method1("getfile", (&func,)).ok()?;
     let source_lines = inspect.call_method1("getsourcelines", (&func,)).ok()?;
 
     let file: String = source_file.extract().ok()?;
-    let lines_tuple = source_lines.downcast::<pyo3::types::PyTuple>().ok()?;
+    let lines_tuple = source_lines.cast::<pyo3::types::PyTuple>().ok()?;
     let line_num: usize = lines_tuple.get_item(1).ok()?.extract().ok()?;
 
     Some(format!("{}:{}", file, line_num))
@@ -181,11 +181,11 @@ fn extract_edges(graph: &Bound<'_, PyAny>) -> PyResult<Vec<EdgeInfo>> {
 
     // Try to get edges from the graph
     if let Ok(edges_list) = graph.getattr("edges") {
-        for edge in edges_list.iter()? {
+        for edge in edges_list.try_iter()? {
             let edge = edge?;
 
             // Edge might be a tuple (from, to) or an object
-            if let Ok(tuple) = edge.downcast::<pyo3::types::PyTuple>() {
+            if let Ok(tuple) = edge.cast::<pyo3::types::PyTuple>() {
                 let from: String = tuple.get_item(0)?.extract()?;
                 let to: String = tuple.get_item(1)?.extract()?;
 
@@ -202,14 +202,14 @@ fn extract_edges(graph: &Bound<'_, PyAny>) -> PyResult<Vec<EdgeInfo>> {
     if let Ok(builder) = graph.getattr("builder") {
         if let Ok(edges_dict) = builder.getattr("_edges") {
             let items = edges_dict.call_method0("items")?;
-            for item in items.iter()? {
+            for item in items.try_iter()? {
                 let item = item?;
-                let tuple = item.downcast::<pyo3::types::PyTuple>()?;
+                let tuple = item.cast::<pyo3::types::PyTuple>()?;
                 let from: String = tuple.get_item(0)?.extract()?;
                 let to_list = tuple.get_item(1)?;
 
                 // Handle different edge formats
-                for to in to_list.iter()? {
+                for to in to_list.try_iter()? {
                     let to_str: String = to?.extract().unwrap_or_default();
                     if !to_str.is_empty() {
                         edges.push(EdgeInfo {
@@ -234,9 +234,9 @@ fn extract_state_schema(graph: &Bound<'_, PyAny>) -> PyResult<StateSchema> {
     if let Ok(channels) = graph.getattr("channels") {
         // Iterate over channels to extract field information
         let items = channels.call_method0("items")?;
-        for item in items.iter()? {
+        for item in items.try_iter()? {
             let item = item?;
-            let tuple = item.downcast::<pyo3::types::PyTuple>()?;
+            let tuple = item.cast::<pyo3::types::PyTuple>()?;
             let field_name: String = tuple.get_item(0)?.extract()?;
             let channel_obj = tuple.get_item(1)?;
 
@@ -271,9 +271,9 @@ fn extract_fields_from_schema(schema: &Bound<'_, PyAny>) -> PyResult<Vec<FieldIn
     // Try to get __annotations__ for TypedDict
     if let Ok(annotations) = schema.getattr("__annotations__") {
         let items = annotations.call_method0("items")?;
-        for item in items.iter()? {
+        for item in items.try_iter()? {
             let item = item?;
-            let tuple = item.downcast::<pyo3::types::PyTuple>()?;
+            let tuple = item.cast::<pyo3::types::PyTuple>()?;
             let field_name: String = tuple.get_item(0)?.extract()?;
             let type_obj = tuple.get_item(1)?;
 
@@ -358,9 +358,9 @@ fn extract_conditional_edges(
     if let Ok(builder) = graph.getattr("builder") {
         if let Ok(cond_edges_dict) = builder.getattr("_conditional_edges") {
             let items = cond_edges_dict.call_method0("items")?;
-            for item in items.iter()? {
+            for item in items.try_iter()? {
                 let item = item?;
-                let tuple = item.downcast::<pyo3::types::PyTuple>()?;
+                let tuple = item.cast::<pyo3::types::PyTuple>()?;
                 let source_node: String = tuple.get_item(0)?.extract()?;
                 let cond_edge_obj = tuple.get_item(1)?;
 
@@ -409,9 +409,9 @@ fn extract_branch_mappings(cond_edge: &Bound<'_, PyAny>) -> PyResult<HashMap<Str
     // Try to get the path_map or branches
     if let Ok(path_map) = cond_edge.getattr("path_map") {
         if let Ok(items) = path_map.call_method0("items") {
-            for item in items.iter()? {
+            for item in items.try_iter()? {
                 let item = item?;
-                let tuple = item.downcast::<pyo3::types::PyTuple>()?;
+                let tuple = item.cast::<pyo3::types::PyTuple>()?;
                 let key: String = tuple.get_item(0)?.extract()?;
                 let value: String = tuple.get_item(1)?.extract()?;
                 branches.insert(key, value);
@@ -445,4 +445,45 @@ fn langgraph_inspector(m: &Bound<'_, pyo3::types::PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(extract_graph_info, m)?)?;
     m.add_function(wrap_pyfunction!(trace_execution, m)?)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pyo3::types::PyModule;
+
+    #[test]
+    fn extracts_graph_metadata_with_current_python_api() {
+        Python::attach(|py| {
+            let module = PyModule::from_code(
+                py,
+                cr#"
+from types import SimpleNamespace
+
+def start_node(state):
+    return state
+
+graph = SimpleNamespace(
+    nodes={'start': SimpleNamespace(func=start_node)},
+    edges=[('start', '__end__')],
+    channels={'count': SimpleNamespace(value_type=int)},
+    entry_point='start',
+)
+"#,
+                c"fixture.py",
+                c"fixture",
+            )
+            .unwrap();
+            let graph = module.getattr("graph").unwrap();
+            let info: GraphInfo =
+                serde_json::from_str(&extract_graph_info(&graph).unwrap()).unwrap();
+            assert_eq!(info.nodes[0].name, "start");
+            assert_eq!(info.nodes[0].func_name, "start_node");
+            assert_eq!(info.nodes[0].signature, "(state)");
+            assert_eq!(info.edges[0].to, "__end__");
+            assert_eq!(info.state_schema.fields[0].name, "count");
+            assert_eq!(info.state_schema.fields[0].type_name, "int");
+            assert_eq!(info.entry_point, "start");
+        });
+    }
 }

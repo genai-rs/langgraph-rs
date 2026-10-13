@@ -1,23 +1,26 @@
 """Workflow with complex Python types."""
 
-from typing import TypedDict, Optional
 from dataclasses import dataclass
-from langgraph.graph import StateGraph, END
+from typing import Any, TypedDict
+
+from langgraph.graph import END, StateGraph
 
 
 @dataclass
 class UserInfo:
     """Custom dataclass for user information."""
+
     name: str
     age: int
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class ComplexState(TypedDict):
     """State with complex nested types."""
+
     users: list[dict]
-    metadata: dict[str, any]
-    current_user: Optional[dict]
+    metadata: dict[str, Any]
+    current_user: dict | None
     scores: dict[str, float]
     flags: dict[str, bool]
 
@@ -55,13 +58,15 @@ def calculate_scores(state: ComplexState) -> ComplexState:
 def finalize(state: ComplexState) -> ComplexState:
     """Final processing."""
     state["metadata"]["total_users"] = len(state["users"])
-    state["metadata"]["avg_score"] = sum(state["scores"].values()) / len(state["scores"]) if state["scores"] else 0.0
+    state["metadata"]["avg_score"] = (
+        sum(state["scores"].values()) / len(state["scores"]) if state["scores"] else 0.0
+    )
     state["flags"]["complete"] = True
     return state
 
 
 # Build the graph
-workflow = StateGraph(ComplexState)
+workflow: StateGraph[ComplexState, None, ComplexState, ComplexState] = StateGraph(ComplexState)
 
 # Add nodes
 workflow.add_node("init", init_node)
@@ -83,16 +88,16 @@ graph = workflow.compile()
 
 
 if __name__ == "__main__":
-    initial_state = {
+    initial_state: ComplexState = {
         "users": [
             {"name": "Alice", "age": 30},
             {"name": "Bob", "age": 25},
-            {"name": "Charlie", "age": 35}
+            {"name": "Charlie", "age": 35},
         ],
         "metadata": {},
         "current_user": None,
         "scores": {},
-        "flags": {"scores_calculated": False, "complete": False}
+        "flags": {"scores_calculated": False, "complete": False},
     }
 
     result = graph.invoke(initial_state)

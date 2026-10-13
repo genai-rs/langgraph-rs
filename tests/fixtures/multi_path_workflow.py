@@ -1,11 +1,13 @@
 """Workflow with multiple independent paths that merge."""
 
-from typing import TypedDict, Literal
-from langgraph.graph import StateGraph, END
+from typing import Literal, TypedDict
+
+from langgraph.graph import END, StateGraph
 
 
 class MultiPathState(TypedDict):
     """State for multi-path workflow."""
+
     input_value: int
     path_a_result: int
     path_b_result: int
@@ -62,7 +64,9 @@ def merge(state: MultiPathState) -> MultiPathState:
 
 
 # Build the graph
-workflow = StateGraph(MultiPathState)
+workflow: StateGraph[MultiPathState, None, MultiPathState, MultiPathState] = StateGraph(
+    MultiPathState
+)
 
 # Add nodes
 workflow.add_node("start", start)
@@ -76,13 +80,7 @@ workflow.set_entry_point("start")
 
 # Add conditional routing from start
 workflow.add_conditional_edges(
-    "start",
-    router,
-    {
-        "path_a": "path_a",
-        "path_b": "path_b",
-        "path_c": "path_c"
-    }
+    "start", router, {"path_a": "path_a", "path_b": "path_b", "path_c": "path_c"}
 )
 
 # All paths converge to merge
@@ -97,13 +95,13 @@ graph = workflow.compile()
 
 if __name__ == "__main__":
     for test_value in [10, 50, 80]:
-        initial_state = {
+        initial_state: MultiPathState = {
             "input_value": test_value,
             "path_a_result": 0,
             "path_b_result": 0,
             "path_c_result": 0,
             "final_result": 0,
-            "chosen_path": ""
+            "chosen_path": "",
         }
 
         result = graph.invoke(initial_state)

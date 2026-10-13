@@ -21,7 +21,7 @@ Convert LangGraph (Python) workflows into high-performance Rust code for product
 - Type-safe code generation with proper error handling
 - Production-ready with Docker and Kubernetes support
 
-**Current Release:** v0.1.0 - [Release Notes](https://github.com/genai-rs/langgraph-rs/releases/tag/v0.1.0)
+**Release:** v0.1.1 - [Release Notes](https://github.com/genai-rs/langgraph-rs/releases/tag/v0.1.1)
 
 ## Architecture
 
@@ -217,3 +217,11 @@ This project is dual-licensed under MIT OR Apache-2.0.
 
 - GitHub: [@genai-rs](https://github.com/genai-rs)
 - Issues: [GitHub Issues](https://github.com/genai-rs/langgraph-rs/issues)
+
+## Release checks
+
+Rust CI builds and tests every workspace crate and runs Clippy with warnings treated as errors. The required `CI` check fails if any build, test, or coverage job fails. Rust dependencies are recorded in `Cargo.lock`; CI and release builds use `--locked`.
+
+To publish a release, merge a passing PR that updates the workspace and Python package version, then push the matching `v<version>` tag. The release workflow runs the full CI suite on the tagged source, builds and smoke-tests the CLI on all four supported platforms, and only then creates or updates the GitHub release. The manual Release workflow can rebuild an existing tag. Tag and package versions must match.
+
+Version `v0.1.0` did not compile and its existing GitHub release has no binaries. Use `v0.1.1` or a later verified release.

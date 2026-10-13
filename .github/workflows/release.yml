@@ -19,9 +19,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-release:
+    name: Validate Release
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
   build-release:
     name: Build Release (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    needs: validate-release
     strategy:
       fail-fast: false
       matrix:
@@ -74,14 +81,28 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Verify tag matches package version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+          with open('Cargo.toml', 'rb') as manifest:
+              version = tomllib.load(manifest)['workspace']['package']['version']
+          if os.environ['RELEASE_TAG'] != f'v{version}':
+              raise SystemExit(f'Release tag must match package version v{version}')
+          PY
+
       - name: Build and smoke-test CLI
         env:
           PYO3_PYTHON: ${{ steps.python.outputs.python-path }}
           TARGET: ${{ matrix.target }}
           EXTENSION: ${{ matrix.extension }}
         run: |
-          cargo build --release --package langgraph-cli --bin langgraph-rs --target "$TARGET"
+          cargo build --locked --release --package langgraph-cli --bin langgraph-rs --target "$TARGET"
           "target/$TARGET/release/langgraph-rs$EXTENSION" --help
+          "target/$TARGET/release/langgraph-rs$EXTENSION" --version
 
       - name: Prepare release asset
         env:

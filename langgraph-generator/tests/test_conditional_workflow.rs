@@ -1,5 +1,4 @@
 /// Integration test for conditional workflow conversion
-use langgraph_generator::CodeGenerator;
 
 #[test]
 fn test_conditional_routing_generation() {
