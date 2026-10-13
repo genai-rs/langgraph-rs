@@ -15,4 +15,4 @@ tracing.workspace = true
 quote = "1.0.47"
 syn = "2.0.119"
 proc-macro2 = "1.0.107"
-langgraph-inspector = { path = "../langgraph-inspector" }
+langgraph-inspector = { path = "../langgraph-inspector", default-features = false }

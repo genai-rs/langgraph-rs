@@ -769,7 +769,7 @@ dependencies = [
 
 [[package]]
 name = "langgraph-cli"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -784,7 +784,7 @@ dependencies = [
 
 [[package]]
 name = "langgraph-generator"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "langgraph-inspector",
@@ -799,7 +799,7 @@ dependencies = [
 
 [[package]]
 name = "langgraph-inspector"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "pyo3",
@@ -811,7 +811,7 @@ dependencies = [
 
 [[package]]
 name = "langgraph-runtime"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "async-trait",

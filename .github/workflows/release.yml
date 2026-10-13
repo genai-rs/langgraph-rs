@@ -104,6 +104,21 @@ jobs:
           "target/$TARGET/release/langgraph-rs$EXTENSION" --help
           "target/$TARGET/release/langgraph-rs$EXTENSION" --version
 
+      - name: Verify macOS binary has no build-machine library dependencies
+        if: runner.os == 'macOS'
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          otool -L "target/$TARGET/release/langgraph-rs" > dependencies.txt
+          cat dependencies.txt
+          python - <<'PY'
+          from pathlib import Path
+          for line in Path('dependencies.txt').read_text().splitlines()[1:]:
+              library = line.strip().split(' (', 1)[0]
+              if not library.startswith(('/usr/lib/', '/System/Library/')):
+                  raise SystemExit(f'Non-system library dependency in release binary: {library}')
+          PY
+
       - name: Prepare release asset
         env:
           TARGET: ${{ matrix.target }}
