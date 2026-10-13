@@ -96,6 +96,7 @@ jobs:
 
       - name: Build and smoke-test CLI
         env:
+          RUSTFLAGS: ${{ startsWith(matrix.os, 'macos') && '-C link-arg=-Wl,-dead_strip_dylibs' || '' }}
           PYO3_PYTHON: ${{ steps.python.outputs.python-path }}
           TARGET: ${{ matrix.target }}
           EXTENSION: ${{ matrix.extension }}
@@ -103,6 +104,21 @@ jobs:
           cargo build --locked --release --package langgraph-cli --bin langgraph-rs --target "$TARGET"
           "target/$TARGET/release/langgraph-rs$EXTENSION" --help
           "target/$TARGET/release/langgraph-rs$EXTENSION" --version
+
+      - name: Verify macOS binary has no build-machine library dependencies
+        if: runner.os == 'macOS'
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          otool -L "target/$TARGET/release/langgraph-rs" > dependencies.txt
+          cat dependencies.txt
+          python - <<'PY'
+          from pathlib import Path
+          for line in Path('dependencies.txt').read_text().splitlines()[1:]:
+              library = line.strip().split(' (', 1)[0]
+              if not library.startswith(('/usr/lib/', '/System/Library/')):
+                  raise SystemExit(f'Non-system library dependency in release binary: {library}')
+          PY
 
       - name: Prepare release asset
         env:
