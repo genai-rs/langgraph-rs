@@ -1,5 +1,6 @@
 use anyhow::{bail, ensure, Context, Result};
 use clap::{Parser, Subcommand};
+use langgraph_cli::package_writer::write_generated_package;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -134,24 +135,13 @@ async fn convert_workflow(input: PathBuf, output: PathBuf, with_tests: bool) -> 
     info!("Generating Rust code...");
     let rust_code = langgraph_generator::generate_from_json(&graph_json)?;
 
-    // Step 3: Create output directory
-    fs::create_dir_all(&output)?;
-
-    // Step 4: Write generated code
-    let main_file = output.join("lib.rs");
-    fs::write(&main_file, rust_code)?;
-    info!("Generated Rust code written to: {:?}", main_file);
-
-    // Step 5: Generate Cargo.toml
-    let cargo_toml = generate_cargo_toml(&input);
-    fs::write(output.join("Cargo.toml"), cargo_toml)?;
-
-    // Step 6: Generate tests if requested
-    if with_tests {
-        let test_code = generate_test_code(&graph_json)?;
-        fs::write(output.join("tests.rs"), test_code)?;
-        info!("Generated tests written to: {:?}", output.join("tests.rs"));
-    }
+    // Step 3: Write a complete, discoverable Cargo package.
+    let package_name =
+        write_generated_package(&output, &input, &rust_code, &graph_json, with_tests)?;
+    info!(
+        "Generated Cargo package {package_name} written to: {:?}",
+        output
+    );
 
     info!("Conversion complete! Output written to: {:?}", output);
     Ok(())
@@ -231,46 +221,6 @@ fn validate_input_file(input: &Path) -> Result<()> {
 fn extract_graph_info(input: &Path) -> Result<String> {
     validate_input_file(input)?;
     bail!("Python graph extraction is not implemented")
-}
-
-fn generate_cargo_toml(input: &Path) -> String {
-    let name = input
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("generated_graph");
-
-    format!(
-        r#"[package]
-name = "{}"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-tokio = {{ version = "1.40", features = ["full"] }}
-serde = {{ version = "1.0", features = ["derive"] }}
-serde_json = "1.0"
-anyhow = "1.0"
-async-trait = "0.1"
-langgraph-runtime = "0.1"
-"#,
-        name
-    )
-}
-
-fn generate_test_code(_graph_json: &str) -> Result<String> {
-    Ok(r#"#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_graph_execution() {
-        let initial_state = GraphState::new();
-        let result = run_graph(initial_state).await.unwrap();
-        // TODO: Add assertions
-    }
-}
-"#
-    .to_string())
 }
 
 fn generate_mermaid(graph_info: &langgraph_inspector::GraphInfo) -> String {
