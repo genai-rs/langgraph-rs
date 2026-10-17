@@ -25,7 +25,6 @@ pub fn format_generated_code(
     // Add standard imports
     code.push_str("use serde::{Deserialize, Serialize};\n");
     code.push_str("use anyhow::{Result, Context};\n");
-    code.push_str("use async_trait::async_trait;\n");
 
     // Add custom imports
     for import in imports {
