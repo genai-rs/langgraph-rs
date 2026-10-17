@@ -1,8 +1,8 @@
-use anyhow::Result;
+use anyhow::{bail, ensure, Context, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info};
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
@@ -41,7 +41,7 @@ enum Commands {
         #[arg(value_name = "PYTHON_FILE")]
         graph: PathBuf,
 
-        /// Output format (json, yaml, toml)
+        /// Output format (json; yaml and toml are not implemented)
         #[arg(short, long, default_value = "json")]
         format: String,
     },
@@ -67,7 +67,7 @@ enum Commands {
         #[arg(value_name = "PYTHON_FILE")]
         graph: PathBuf,
 
-        /// Output format (mermaid, dot, svg)
+        /// Output format (mermaid, dot; svg is not implemented)
         #[arg(short, long, default_value = "mermaid")]
         format: String,
 
@@ -89,6 +89,7 @@ async fn main() -> Result<()> {
     };
 
     tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| filter.into()))
         .init();
 
@@ -125,9 +126,6 @@ async fn main() -> Result<()> {
 async fn convert_workflow(input: PathBuf, output: PathBuf, with_tests: bool) -> Result<()> {
     info!("Converting LangGraph workflow: {:?}", input);
 
-    // TODO: Implement Python execution to extract graph info
-    // For now, we'll use a placeholder
-
     // Step 1: Extract graph info from Python
     info!("Extracting graph metadata...");
     let graph_json = extract_graph_info(&input)?;
@@ -162,24 +160,12 @@ async fn convert_workflow(input: PathBuf, output: PathBuf, with_tests: bool) -> 
 async fn inspect_graph(graph: PathBuf, format: String) -> Result<()> {
     info!("Inspecting graph: {:?}", graph);
 
+    ensure!(
+        format == "json",
+        "Unsupported inspect format: {format}; only json is supported"
+    );
     let graph_json = extract_graph_info(&graph)?;
-
-    match format.as_str() {
-        "json" => {
-            println!("{}", graph_json);
-        }
-        "yaml" => {
-            // TODO: Convert to YAML
-            error!("YAML format not yet implemented");
-        }
-        "toml" => {
-            // TODO: Convert to TOML
-            error!("TOML format not yet implemented");
-        }
-        _ => {
-            error!("Unknown format: {}", format);
-        }
-    }
+    println!("{}", graph_json);
 
     Ok(())
 }
@@ -193,32 +179,30 @@ async fn validate_conversion(
     info!("Python: {:?}", python);
     info!("Rust: {:?}", rust);
 
+    validate_input_file(&python)?;
+    // Rust input may be a source file or a generated project directory.
+    fs::metadata(&rust).with_context(|| format!("Cannot access Rust input: {}", rust.display()))?;
     if let Some(data) = test_data {
-        info!("Using test data: {:?}", data);
+        validate_input_file(&data)?;
     }
 
-    // TODO: Implement validation logic
-    // 1. Run Python version with test data
-    // 2. Run Rust version with same data
-    // 3. Compare outputs
-
-    error!("Validation not yet implemented");
-    Ok(())
+    bail!("Validation is not implemented")
 }
 
 async fn visualize_graph(graph: PathBuf, format: String, output: Option<PathBuf>) -> Result<()> {
     info!("Visualizing graph: {:?}", graph);
 
+    ensure!(
+        matches!(format.as_str(), "mermaid" | "dot"),
+        "Unsupported visualization format: {format}; supported formats are mermaid and dot"
+    );
     let graph_json = extract_graph_info(&graph)?;
     let graph_info: langgraph_inspector::GraphInfo = serde_json::from_str(&graph_json)?;
 
     let visualization = match format.as_str() {
         "mermaid" => generate_mermaid(&graph_info),
         "dot" => generate_dot(&graph_info),
-        _ => {
-            error!("Unknown format: {}", format);
-            return Ok(());
-        }
+        _ => bail!("Unsupported visualization format: {format}"),
     };
 
     if let Some(output_file) = output {
@@ -231,33 +215,22 @@ async fn visualize_graph(graph: PathBuf, format: String, output: Option<PathBuf>
     Ok(())
 }
 
-fn extract_graph_info(_input: &Path) -> Result<String> {
-    // TODO: Actually run Python and extract graph info
-    // For now, return a placeholder
-    Ok(serde_json::to_string_pretty(&serde_json::json!({
-        "nodes": [
-            {
-                "name": "start",
-                "func_name": "start_node",
-                "signature": "(state: State) -> State",
-                "docstring": "Start node",
-                "source_hint": null
-            }
-        ],
-        "edges": [],
-        "state_schema": {
-            "fields": [
-                {
-                    "name": "messages",
-                    "type_name": "list",
-                    "is_optional": false,
-                    "default_value": null
-                }
-            ]
-        },
-        "entry_point": "start",
-        "conditional_edges": {}
-    }))?)
+fn validate_input_file(input: &Path) -> Result<()> {
+    ensure!(
+        fs::metadata(input)
+            .with_context(|| format!("Cannot inspect input file: {}", input.display()))?
+            .is_file(),
+        "Input is not a regular file: {}",
+        input.display()
+    );
+    fs::File::open(input)
+        .with_context(|| format!("Cannot open input file: {}", input.display()))?;
+    Ok(())
+}
+
+fn extract_graph_info(input: &Path) -> Result<String> {
+    validate_input_file(input)?;
+    bail!("Python graph extraction is not implemented")
 }
 
 fn generate_cargo_toml(input: &Path) -> String {
