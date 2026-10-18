@@ -230,12 +230,32 @@ fn generate_test_code(graph: &GraphInfo, package_name: &str) -> String {
     } else {
         format!("GraphState {{\n{fields}\n    }}")
     };
-    let entry_point = &graph.entry_point;
+    let first_node = first_executed_node(graph);
     format!(
-        "{marker}\nuse {crate_name}::{{run_graph, GraphState}};\n\n#[tokio::test]\nasync fn generated_graph_reports_unimplemented_node() {{\n    let error = run_graph({state}).await.unwrap_err();\n    assert!(format!(\"{{error:#}}\").contains(\"Node '{entry_point}' is not implemented\"), \"unexpected scaffold error: {{error:#}}\");\n}}\n",
+        "{marker}\nuse {crate_name}::{{run_graph, GraphState}};\n\n#[tokio::test]\nasync fn generated_graph_reports_unimplemented_node() {{\n    let error = run_graph({state}).await.unwrap_err();\n    assert!(format!(\"{{error:#}}\").contains(\"Node '{first_node}' is not implemented\"), \"unexpected scaffold error: {{error:#}}\");\n}}\n",
         marker = GENERATED_TEST_MARKER,
-        crate_name = package_name
+        crate_name = package_name,
+        first_node = first_node
     )
+}
+
+fn first_executed_node(graph: &GraphInfo) -> &str {
+    if graph
+        .nodes
+        .iter()
+        .any(|node| node.name == graph.entry_point)
+    {
+        return &graph.entry_point;
+    }
+
+    graph
+        .edges
+        .iter()
+        .find(|edge| {
+            edge.from == graph.entry_point && graph.nodes.iter().any(|node| node.name == edge.to)
+        })
+        .map(|edge| edge.to.as_str())
+        .unwrap_or(&graph.entry_point)
 }
 
 #[cfg(test)]
