@@ -144,6 +144,17 @@ fn test_linear_graph_rejects_unknown_edge_sources() {
 }
 
 #[test]
+fn test_linear_graph_rejects_missing_target_on_unreachable_edge() {
+    let graph = graph_json(&["a", "b"], &[("a", "END"), ("b", "missing")], "a");
+
+    let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
+    assert!(error.to_string().contains("edge 'b' -> 'missing'"));
+    assert!(error
+        .to_string()
+        .contains("targets neither a graph node nor END"));
+}
+
+#[test]
 fn test_linear_graph_rejects_condition_bearing_direct_edges() {
     let mut graph: serde_json::Value =
         serde_json::from_str(&graph_json(&["a", "b"], &[("a", "b"), ("b", "END")], "a")).unwrap();
