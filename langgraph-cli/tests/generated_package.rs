@@ -46,6 +46,23 @@ const LINEAR_GRAPH: &str = r#"{
     "conditional_edges":{}
 }"#;
 
+const START_SENTINEL_GRAPH: &str = r#"{
+    "nodes": [
+        {"name":"finish","func_name":"finish","signature":"(state) -> state","docstring":null,"source_hint":null},
+        {"name":"step","func_name":"step","signature":"(state) -> state","docstring":null,"source_hint":null}
+    ],
+    "edges": [
+        {"from":"__start__","to":"step","condition":null},
+        {"from":"step","to":"finish","condition":null},
+        {"from":"finish","to":"END","condition":null}
+    ],
+    "state_schema": {"fields": [
+        {"name":"counter","type_name":"int","is_optional":false,"default_value":null}
+    ]},
+    "entry_point":"__start__",
+    "conditional_edges":{}
+}"#;
+
 #[test]
 fn generated_names_compile_and_regeneration_removes_only_owned_tests() {
     let temp = TempDir::new();
@@ -151,6 +168,30 @@ fn generated_names_compile_and_regeneration_removes_only_owned_tests() {
         user_owned_test
     );
     run_cargo_test(&temp.0, &package, "user_owned_test ... ok");
+}
+
+#[test]
+fn generated_package_with_start_sentinel_reports_first_real_node_error() {
+    let temp = TempDir::new();
+    let rust = langgraph_generator::generate_from_json(START_SENTINEL_GRAPH).unwrap();
+    let package = temp.0.join("start-sentinel");
+    write_generated_package(
+        &package,
+        Path::new("start-sentinel.py"),
+        &rust,
+        START_SENTINEL_GRAPH,
+        true,
+    )
+    .unwrap();
+
+    let generated_test = fs::read_to_string(package.join("tests/generated_graph.rs")).unwrap();
+    assert!(generated_test.contains("Node 'step' is not implemented"));
+    assert!(!generated_test.contains("Node '__start__' is not implemented"));
+    run_cargo_test(
+        &temp.0,
+        &package,
+        "generated_graph_reports_unimplemented_node ... ok",
+    );
 }
 
 fn run_cargo_test(directory: &Path, package: &Path, expected_test: &str) {
