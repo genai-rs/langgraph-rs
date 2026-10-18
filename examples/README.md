@@ -1,6 +1,6 @@
 # LangGraph-RS Examples
 
-This directory contains Python scripts illustrating LangGraph patterns. The current CLI cannot extract their graph metadata or convert their behavior to Rust. The scripts and their descriptions are not verified Rust conversions or production-ready applications.
+This directory contains Python scripts illustrating LangGraph patterns. The CLI can extract graph metadata when the local inspector package and LangGraph dependencies are installed in the selected Python environment. It does not convert node or routing behavior to Rust. The scripts and their descriptions are not verified Rust conversions or production-ready applications.
 
 ## Example Categories
 

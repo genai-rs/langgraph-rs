@@ -4,6 +4,7 @@ use std::collections::HashMap;
 pub mod type_mapping;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct GraphInfo {
     pub nodes: Vec<NodeInfo>,
     pub edges: Vec<EdgeInfo>,
@@ -13,6 +14,7 @@ pub struct GraphInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct NodeInfo {
     pub name: String,
     pub func_name: String,
@@ -22,6 +24,7 @@ pub struct NodeInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct EdgeInfo {
     pub from: String,
     pub to: String,
@@ -29,11 +32,13 @@ pub struct EdgeInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct StateSchema {
     pub fields: Vec<FieldInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct FieldInfo {
     pub name: String,
     pub type_name: String,
@@ -42,6 +47,7 @@ pub struct FieldInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ConditionalEdge {
     pub condition_func: String,
     pub branches: HashMap<String, String>,

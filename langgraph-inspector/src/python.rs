@@ -1,6 +1,10 @@
 use super::*;
 use pyo3::prelude::*;
 
+fn value_error(message: impl Into<String>) -> PyErr {
+    PyErr::new::<pyo3::exceptions::PyValueError, _>(message.into())
+}
+
 /// Extract metadata from a LangGraph instance
 #[pyfunction]
 pub fn extract_graph_info(graph: &Bound<'_, PyAny>) -> PyResult<String> {
@@ -30,12 +34,16 @@ pub fn extract_graph_info(graph: &Bound<'_, PyAny>) -> PyResult<String> {
 fn extract_nodes(graph: &Bound<'_, PyAny>) -> PyResult<Vec<NodeInfo>> {
     let mut nodes = Vec::new();
 
-    // Try to get nodes from the graph
-    // LangGraph compiled graphs have a nodes attribute
-    let nodes_dict = graph.getattr("nodes").or_else(|_| {
-        // If that fails, try getting it from the builder/workflow
-        graph.getattr("builder")?.getattr("nodes")
-    })?;
+    // CompiledStateGraph.nodes contains Pregel runtime nodes, including
+    // sentinels. Its builder holds the user-declared StateNodeSpec values.
+    let builder_nodes = graph
+        .getattr("builder")
+        .and_then(|builder| builder.getattr("nodes"));
+    let uses_builder_nodes = builder_nodes.is_ok();
+    let nodes_dict = match builder_nodes {
+        Ok(nodes) => nodes,
+        Err(_) => graph.getattr("nodes")?,
+    };
 
     // Iterate over nodes
     let items = nodes_dict.call_method0("items")?;
@@ -43,7 +51,15 @@ fn extract_nodes(graph: &Bound<'_, PyAny>) -> PyResult<Vec<NodeInfo>> {
         let item = item?;
         let tuple = item.cast::<pyo3::types::PyTuple>()?;
         let name: String = tuple.get_item(0)?.extract()?;
-        let node_obj = tuple.get_item(1)?;
+        if uses_builder_nodes && matches!(name.as_str(), "__start__" | "__end__") {
+            return Err(value_error(format!(
+                "compiled StateGraph builder contains reserved sentinel node '{name}'"
+            )));
+        }
+        let node_spec = tuple.get_item(1)?;
+        let node_obj = node_spec
+            .getattr("runnable")
+            .unwrap_or_else(|_| node_spec.clone());
 
         let func_name = extract_function_name(&node_obj)?;
         let signature = extract_function_signature(&node_obj).unwrap_or_default();
@@ -64,14 +80,12 @@ fn extract_nodes(graph: &Bound<'_, PyAny>) -> PyResult<Vec<NodeInfo>> {
 
 /// Extract function name from a node object
 fn extract_function_name(node_obj: &Bound<'_, PyAny>) -> PyResult<String> {
-    // Try different ways to get the function name
-    if let Ok(func) = node_obj.getattr("func") {
-        if let Ok(name) = func.getattr("__name__") {
-            return name.extract();
-        }
+    let callable = extract_node_callable(node_obj);
+    if let Ok(name) = callable.getattr("__name__") {
+        return name.extract();
     }
 
-    if let Ok(name) = node_obj.getattr("__name__") {
+    if let Ok(name) = node_obj.getattr("name") {
         return name.extract();
     }
 
@@ -79,11 +93,20 @@ fn extract_function_name(node_obj: &Bound<'_, PyAny>) -> PyResult<String> {
     Ok(node_obj.get_type().name()?.to_string())
 }
 
+fn extract_node_callable<'py>(node_obj: &Bound<'py, PyAny>) -> Bound<'py, PyAny> {
+    for attribute in ["func", "afunc"] {
+        if let Ok(callable) = node_obj.getattr(attribute) {
+            if !callable.is_none() {
+                return callable;
+            }
+        }
+    }
+    node_obj.clone()
+}
+
 /// Extract function signature
 fn extract_function_signature(node_obj: &Bound<'_, PyAny>) -> PyResult<String> {
-    let func = node_obj
-        .getattr("func")
-        .unwrap_or_else(|_| node_obj.clone());
+    let func = extract_node_callable(node_obj);
 
     // Try to get signature using inspect module
     let py = node_obj.py();
@@ -95,10 +118,7 @@ fn extract_function_signature(node_obj: &Bound<'_, PyAny>) -> PyResult<String> {
 
 /// Extract docstring from a function
 fn extract_docstring(node_obj: &Bound<'_, PyAny>) -> Option<String> {
-    let func = node_obj
-        .getattr("func")
-        .ok()
-        .unwrap_or_else(|| node_obj.clone());
+    let func = extract_node_callable(node_obj);
     let doc = func.getattr("__doc__").ok()?;
 
     if doc.is_none() {
@@ -111,10 +131,7 @@ fn extract_docstring(node_obj: &Bound<'_, PyAny>) -> Option<String> {
 /// Extract source code hint for the function
 fn extract_source_hint(node_obj: &Bound<'_, PyAny>) -> Option<String> {
     let py = node_obj.py();
-    let func = node_obj
-        .getattr("func")
-        .ok()
-        .unwrap_or_else(|| node_obj.clone());
+    let func = extract_node_callable(node_obj);
 
     // Try to get source file and line number
     let inspect = py.import("inspect").ok()?;
@@ -131,6 +148,44 @@ fn extract_source_hint(node_obj: &Bound<'_, PyAny>) -> Option<String> {
 /// Extract edges from the graph
 fn extract_edges(graph: &Bound<'_, PyAny>) -> PyResult<Vec<EdgeInfo>> {
     let mut edges = Vec::new();
+
+    // LangGraph 0.6 CompiledStateGraph stores declared topology on builder.edges.
+    // Its START edge is represented by entry_point; the END edge keeps the
+    // existing GraphInfo __end__ sentinel.
+    if let Ok(builder) = graph.getattr("builder") {
+        if let Ok(waiting_edges) = builder.getattr("waiting_edges") {
+            if waiting_edges.try_iter()?.next().transpose()?.is_some() {
+                return Err(value_error(
+                    "compiled StateGraph join edges are not supported by GraphInfo",
+                ));
+            }
+        }
+        if let Ok(builder_edges) = builder.getattr("edges") {
+            for edge in builder_edges.try_iter()? {
+                let edge = edge?;
+                let tuple = edge.cast::<pyo3::types::PyTuple>()?;
+                if tuple.len() != 2 {
+                    return Err(value_error("compiled graph edge must have two endpoints"));
+                }
+                let from: String = tuple.get_item(0)?.extract()?;
+                let to: String = tuple.get_item(1)?.extract()?;
+                if from != "__start__" {
+                    edges.push(EdgeInfo {
+                        from,
+                        to,
+                        condition: None,
+                    });
+                }
+            }
+            sort_edges(&mut edges);
+            return Ok(edges);
+        }
+        if builder.getattr("nodes").is_ok() {
+            return Err(value_error(
+                "compiled StateGraph builder does not expose supported edges metadata",
+            ));
+        }
+    }
 
     // Try to get edges from the graph
     if let Ok(edges_list) = graph.getattr("edges") {
@@ -176,12 +231,35 @@ fn extract_edges(graph: &Bound<'_, PyAny>) -> PyResult<Vec<EdgeInfo>> {
         }
     }
 
+    sort_edges(&mut edges);
     Ok(edges)
+}
+
+fn sort_edges(edges: &mut [EdgeInfo]) {
+    edges.sort_by(|left, right| {
+        left.from
+            .cmp(&right.from)
+            .then_with(|| left.to.cmp(&right.to))
+    });
 }
 
 /// Extract state schema from TypedDict
 fn extract_state_schema(graph: &Bound<'_, PyAny>) -> PyResult<StateSchema> {
     let mut fields = Vec::new();
+
+    // Prefer the declared user state schema over Pregel channels, which also
+    // contain internal runtime fields and erase original annotations.
+    if let Ok(builder) = graph.getattr("builder") {
+        if let Ok(state_schema) = builder.getattr("state_schema") {
+            fields = extract_fields_from_schema(&state_schema)?;
+            return Ok(StateSchema { fields });
+        }
+        if builder.getattr("nodes").is_ok() {
+            return Err(value_error(
+                "compiled StateGraph builder does not expose supported state_schema metadata",
+            ));
+        }
+    }
 
     // Try to get the state class/schema
     if let Ok(channels) = graph.getattr("channels") {
@@ -264,6 +342,20 @@ fn extract_type_name(obj: &Bound<'_, PyAny>) -> Option<String> {
 
 /// Convert Python type object to string representation
 fn get_type_string(type_obj: &Bound<'_, PyAny>) -> Option<String> {
+    // GenericAlias and typing objects expose __origin__; their string form
+    // preserves arguments such as list[str] that __name__ would discard.
+    if let Ok(origin) = type_obj.getattr("__origin__") {
+        if !origin.is_none() {
+            let rendered: String = type_obj.str().ok()?.extract().ok()?;
+            return Some(
+                rendered
+                    .strip_prefix("typing.")
+                    .unwrap_or(&rendered)
+                    .to_owned(),
+            );
+        }
+    }
+
     // Try __name__ first
     if let Ok(name) = type_obj.getattr("__name__") {
         return name.extract().ok();
@@ -284,6 +376,37 @@ fn get_type_string(type_obj: &Bound<'_, PyAny>) -> Option<String> {
 
 /// Extract entry point from the graph
 fn extract_entry_point(graph: &Bound<'_, PyAny>) -> PyResult<String> {
+    if let Ok(builder) = graph.getattr("builder") {
+        if let Ok(builder_edges) = builder.getattr("edges") {
+            let mut entries = Vec::new();
+            for edge in builder_edges.try_iter()? {
+                let edge = edge?;
+                let tuple = edge.cast::<pyo3::types::PyTuple>()?;
+                if tuple.len() != 2 {
+                    return Err(value_error("compiled graph edge must have two endpoints"));
+                }
+                let from: String = tuple.get_item(0)?.extract()?;
+                if from == "__start__" {
+                    entries.push(tuple.get_item(1)?.extract::<String>()?);
+                }
+            }
+            return match entries.as_slice() {
+                [entry] if entry != "__end__" => Ok(entry.clone()),
+                [] => Err(value_error(
+                    "compiled StateGraph builder has no supported __start__ entry edge",
+                )),
+                _ => Err(value_error(
+                    "compiled StateGraph builder has ambiguous __start__ entry edges",
+                )),
+            };
+        }
+        if builder.getattr("nodes").is_ok() {
+            return Err(value_error(
+                "compiled StateGraph builder does not expose supported edges metadata",
+            ));
+        }
+    }
+
     // Try multiple ways to get the entry point
     if let Ok(entry) = graph.getattr("entry_point") {
         if let Ok(entry_str) = entry.extract::<String>() {
@@ -297,8 +420,7 @@ fn extract_entry_point(graph: &Bound<'_, PyAny>) -> PyResult<String> {
         }
     }
 
-    // Default entry point
-    Ok("__start__".to_string())
+    Err(value_error("graph does not expose a supported entry point"))
 }
 
 /// Extract conditional edges from the graph
@@ -306,6 +428,84 @@ fn extract_conditional_edges(
     graph: &Bound<'_, PyAny>,
 ) -> PyResult<HashMap<String, ConditionalEdge>> {
     let mut conditional_edges = HashMap::new();
+
+    // CompiledStateGraph stores explicit route maps in builder.branches as
+    // BranchSpec values. Reject inferred routes that GraphInfo cannot express.
+    if let Ok(builder) = graph.getattr("builder") {
+        if let Ok(branches_by_source) = builder.getattr("branches") {
+            for item in branches_by_source.call_method0("items")?.try_iter()? {
+                let item = item?;
+                let tuple = item.cast::<pyo3::types::PyTuple>()?;
+                let source: String = tuple.get_item(0)?.extract()?;
+                if matches!(source.as_str(), "__start__" | "__end__") {
+                    return Err(value_error(format!(
+                        "conditional branches from reserved sentinel '{source}' are not supported"
+                    )));
+                }
+                let source_branches = tuple.get_item(1)?;
+                let mut condition_func: Option<String> = None;
+                let mut routes = HashMap::new();
+
+                for branch_item in source_branches.call_method0("items")?.try_iter()? {
+                    let branch_item = branch_item?;
+                    let branch_tuple = branch_item.cast::<pyo3::types::PyTuple>()?;
+                    let branch = branch_tuple.get_item(1)?;
+                    let path = branch.getattr("path")?;
+                    let name: String = path.getattr("name")?.extract()?;
+                    if condition_func
+                        .as_ref()
+                        .is_some_and(|existing| existing != &name)
+                    {
+                        return Err(value_error(format!(
+                            "multiple conditional functions on node '{source}' are not representable"
+                        )));
+                    }
+                    condition_func = Some(name);
+
+                    let ends = branch.getattr("ends")?;
+                    if ends.is_none() {
+                        return Err(value_error(format!(
+                            "conditional branch on node '{source}' has no explicit route map"
+                        )));
+                    }
+                    for route in ends.call_method0("items")?.try_iter()? {
+                        let route = route?;
+                        let route_tuple = route.cast::<pyo3::types::PyTuple>()?;
+                        let label: String = route_tuple.get_item(0)?.extract()?;
+                        let target: String = route_tuple.get_item(1)?.extract()?;
+                        if routes
+                            .insert(label.clone(), target.clone())
+                            .is_some_and(|previous| previous != target)
+                        {
+                            return Err(value_error(format!(
+                                "conditional route '{label}' on node '{source}' has conflicting targets"
+                            )));
+                        }
+                    }
+                }
+
+                if routes.is_empty() {
+                    return Err(value_error(format!(
+                        "conditional branches on node '{source}' have no explicit routes"
+                    )));
+                }
+                conditional_edges.insert(
+                    source,
+                    ConditionalEdge {
+                        condition_func: condition_func
+                            .unwrap_or_else(|| "unknown_condition".into()),
+                        branches: routes,
+                    },
+                );
+            }
+            return Ok(conditional_edges);
+        }
+        if builder.getattr("nodes").is_ok() {
+            return Err(value_error(
+                "compiled StateGraph builder does not expose supported branches metadata",
+            ));
+        }
+    }
 
     // Try to get conditional edges from builder
     if let Ok(builder) = graph.getattr("builder") {
@@ -437,6 +637,156 @@ graph = SimpleNamespace(
             assert_eq!(info.state_schema.fields[0].name, "count");
             assert_eq!(info.state_schema.fields[0].type_name, "int");
             assert_eq!(info.entry_point, "start");
+        });
+    }
+
+    #[test]
+    fn extracts_compiled_state_graph_from_builder_without_runtime_metadata() {
+        Python::attach(|py| {
+            let module = PyModule::from_code(
+                py,
+                cr#"
+from types import SimpleNamespace
+
+class State:
+    __annotations__ = {'count': int, 'names': list[str]}
+
+def work(state):
+    return state
+
+builder = SimpleNamespace(
+    nodes={'work': SimpleNamespace(runnable=SimpleNamespace(func=work))},
+    edges={('__start__', 'work'), ('work', '__end__')},
+    branches={},
+    state_schema=State,
+)
+graph = SimpleNamespace(
+    builder=builder,
+    nodes={'__start__': object(), 'work': object()},
+    channels={'__pregel_tasks': object()},
+    entry_point='__start__',
+)
+"#,
+                c"fixture.py",
+                c"fixture",
+            )
+            .unwrap();
+            let graph = module.getattr("graph").unwrap();
+            let info: GraphInfo =
+                serde_json::from_str(&extract_graph_info(&graph).unwrap()).unwrap();
+
+            assert_eq!(info.nodes.len(), 1);
+            assert_eq!(info.nodes[0].name, "work");
+            assert_eq!(info.nodes[0].func_name, "work");
+            assert_eq!(info.entry_point, "work");
+            assert_eq!(info.edges.len(), 1);
+            assert_eq!(info.edges[0].from, "work");
+            assert_eq!(info.edges[0].to, "__end__");
+            assert_eq!(info.state_schema.fields.len(), 2);
+            assert_eq!(info.state_schema.fields[0].type_name, "int");
+            assert_eq!(info.state_schema.fields[1].type_name, "list[str]");
+        });
+    }
+
+    #[test]
+    fn rejects_compiled_state_graph_without_a_unique_entry_edge() {
+        Python::attach(|py| {
+            let module = PyModule::from_code(
+                py,
+                cr#"
+from types import SimpleNamespace
+
+class State:
+    __annotations__ = {'count': int}
+
+def work(state):
+    return state
+
+builder = SimpleNamespace(
+    nodes={'work': SimpleNamespace(runnable=SimpleNamespace(func=work))},
+    edges={('__start__', 'work'), ('__start__', 'other')},
+    branches={},
+    state_schema=State,
+)
+graph = SimpleNamespace(builder=builder)
+"#,
+                c"fixture.py",
+                c"fixture",
+            )
+            .unwrap();
+            let graph = module.getattr("graph").unwrap();
+            let error = extract_graph_info(&graph).unwrap_err().to_string();
+            assert!(error.contains("ambiguous __start__ entry edges"), "{error}");
+        });
+    }
+
+    #[test]
+    fn rejects_conditional_branches_without_explicit_routes() {
+        Python::attach(|py| {
+            let module = PyModule::from_code(
+                py,
+                cr#"
+from types import SimpleNamespace
+
+class State:
+    __annotations__ = {'count': int}
+
+def work(state):
+    return state
+
+builder = SimpleNamespace(
+    nodes={'work': SimpleNamespace(runnable=SimpleNamespace(func=work))},
+    edges={('__start__', 'work')},
+    branches={
+        'work': {
+            'route': SimpleNamespace(
+                path=SimpleNamespace(name='route'),
+                ends=None,
+            )
+        }
+    },
+    state_schema=State,
+)
+graph = SimpleNamespace(builder=builder)
+"#,
+                c"fixture.py",
+                c"fixture",
+            )
+            .unwrap();
+            let graph = module.getattr("graph").unwrap();
+            let error = extract_graph_info(&graph).unwrap_err().to_string();
+            assert!(error.contains("no explicit route map"), "{error}");
+        });
+    }
+
+    #[test]
+    fn rejects_compiled_graph_without_user_state_schema() {
+        Python::attach(|py| {
+            let module = PyModule::from_code(
+                py,
+                cr#"
+from types import SimpleNamespace
+
+def work(state):
+    return state
+
+builder = SimpleNamespace(
+    nodes={'work': SimpleNamespace(runnable=SimpleNamespace(func=work))},
+    edges={('__start__', 'work')},
+    branches={},
+)
+graph = SimpleNamespace(
+    builder=builder,
+    channels={'__pregel_tasks': object()},
+)
+"#,
+                c"fixture.py",
+                c"fixture",
+            )
+            .unwrap();
+            let graph = module.getattr("graph").unwrap();
+            let error = extract_graph_info(&graph).unwrap_err().to_string();
+            assert!(error.contains("supported state_schema metadata"), "{error}");
         });
     }
 }

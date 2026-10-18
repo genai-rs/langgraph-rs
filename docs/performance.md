@@ -2,7 +2,7 @@
 
 ## Current evidence
 
-The project does not currently have a reproducible end-to-end benchmark comparing equivalent Python and Rust LangGraph workflows. Python graph extraction and behavioral validation are unimplemented, and generated node functions are placeholders. The previously published latency, throughput, memory, and speedup figures have therefore been removed; they are not supported by benchmark evidence.
+The project does not currently have a reproducible end-to-end benchmark comparing equivalent Python and Rust LangGraph workflows. The CLI extracts graph metadata, but behavioral validation is unimplemented and generated node functions are placeholders. The previously published latency, throughput, memory, and speedup figures have therefore been removed; they are not supported by benchmark evidence.
 
 The source file [`tests/benchmarks/benchmark_conversion.rs`](../tests/benchmarks/benchmark_conversion.rs) contains timing checks for generating code from synthetic graph metadata with 5, 20, and 100 nodes. These are ordinary Rust `#[test]` functions with generous time limits. They do not compare Python with Rust, execute generated workflow logic, or establish an application performance guarantee. The file's location under `tests/benchmarks/` does not make these measurements a Cargo benchmark target.
 
