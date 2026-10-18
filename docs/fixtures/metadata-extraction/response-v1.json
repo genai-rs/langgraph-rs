@@ -1,0 +1,29 @@
+{
+  "protocol_version": 1,
+  "graph_info": {
+    "nodes": [
+      {
+        "name": "start",
+        "func_name": "start_node",
+        "signature": "(state)",
+        "docstring": null,
+        "source_hint": "/workspace/docs/fixtures/metadata-extraction/graph.py:4"
+      }
+    ],
+    "edges": [
+      { "from": "start", "to": "__end__", "condition": null }
+    ],
+    "state_schema": {
+      "fields": [
+        {
+          "name": "count",
+          "type_name": "int",
+          "is_optional": false,
+          "default_value": null
+        }
+      ]
+    },
+    "entry_point": "start",
+    "conditional_edges": {}
+  }
+}
