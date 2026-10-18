@@ -1,0 +1,6 @@
+{
+  "protocol_version": 1,
+  "operation": "extract_graph_info",
+  "source_file": "/workspace/docs/fixtures/metadata-extraction/graph.py",
+  "graph_object": "graph"
+}
