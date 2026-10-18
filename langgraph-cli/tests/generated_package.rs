@@ -105,7 +105,11 @@ fn generated_names_compile_and_regeneration_removes_only_owned_tests() {
         assert!(targets.iter().any(|target| target["kind"][0] == "lib"));
         assert!(targets.iter().any(|target| target["kind"][0] == "test"));
 
-        run_cargo_test(&temp.0, &package, "generated_graph_runs ... ok");
+        run_cargo_test(
+            &temp.0,
+            &package,
+            "generated_graph_reports_unimplemented_node ... ok",
+        );
         if index == 0 {
             first_package = Some(package);
         }

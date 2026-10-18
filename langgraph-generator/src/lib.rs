@@ -120,15 +120,22 @@ pub struct GraphState {{
             r#"{}
 /// Original function: {}
 /// Signature: {}
-async fn {}_node(mut state: GraphState) -> Result<GraphState> {{
+async fn {}_node(_state: GraphState) -> Result<GraphState> {{
 {}
 
-    // TODO: Implement {} logic here
-    // This is a stub - replace with actual implementation
-
-    Ok(state)
+    // BEGIN EDITABLE NODE BODY: {}
+    // Implement this node's business logic here. The generated scaffold returns an error until then.
+    anyhow::bail!("Node '{}' is not implemented")
+    // END EDITABLE NODE BODY: {}
 }}"#,
-            doc, node.func_name, node.signature, node.name, source_comment, node.name
+            doc,
+            node.func_name,
+            node.signature,
+            node.name,
+            source_comment,
+            node.name,
+            node.name,
+            node.name
         )
     }
 
@@ -335,7 +342,9 @@ async fn execute_graph(mut state: GraphState) -> Result<GraphState> {{
                     node.name, node.name
                 ));
 
-                for (condition, target) in &cond_edge.branches {
+                let mut branches: Vec<_> = cond_edge.branches.iter().collect();
+                branches.sort_unstable_by_key(|(condition, _)| *condition);
+                for (condition, target) in branches {
                     if target == "END" || target == "__end__" {
                         execution.push_str(&format!(
                             r#"                    "{}" => break,
@@ -396,8 +405,12 @@ async fn execute_graph(mut state: GraphState) -> Result<GraphState> {{
     /// Generate routing functions for conditional edges
     fn generate_routing_functions(&self) -> String {
         let mut functions = Vec::new();
+        let mut conditional_edges: Vec<_> = self.graph_info.conditional_edges.iter().collect();
+        conditional_edges.sort_unstable_by_key(|(node, _)| *node);
 
-        for (node, cond_edge) in &self.graph_info.conditional_edges {
+        for (node, cond_edge) in conditional_edges {
+            let mut branches: Vec<_> = cond_edge.branches.keys().collect();
+            branches.sort_unstable();
             let func = format!(
                 r#"/// Routing function for node: {}
 /// Original function: {}
@@ -409,9 +422,8 @@ fn {}_route(state: &GraphState) -> &'static str {{
                 node,
                 cond_edge.condition_func,
                 node,
-                cond_edge
-                    .branches
-                    .keys()
+                branches
+                    .iter()
                     .map(|k| format!("\"{}\"", k))
                     .collect::<Vec<_>>()
                     .join(", ")

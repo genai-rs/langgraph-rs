@@ -230,8 +230,9 @@ fn generate_test_code(graph: &GraphInfo, package_name: &str) -> String {
     } else {
         format!("GraphState {{\n{fields}\n    }}")
     };
+    let entry_point = &graph.entry_point;
     format!(
-        "{marker}\nuse {crate_name}::{{run_graph, GraphState}};\n\n#[tokio::test]\nasync fn generated_graph_runs() {{\n    let result = run_graph({state}).await;\n    assert!(result.is_ok(), \"generated graph should run: {{result:?}}\");\n}}\n",
+        "{marker}\nuse {crate_name}::{{run_graph, GraphState}};\n\n#[tokio::test]\nasync fn generated_graph_reports_unimplemented_node() {{\n    let error = run_graph({state}).await.unwrap_err();\n    assert!(format!(\"{{error:#}}\").contains(\"Node '{entry_point}' is not implemented\"), \"unexpected scaffold error: {{error:#}}\");\n}}\n",
         marker = GENERATED_TEST_MARKER,
         crate_name = package_name
     )
