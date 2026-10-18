@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1.9.4,<2"]
+build-backend = "maturin"
+
+[project]
+name = "langgraph-inspector"
+dynamic = ["version"]
+description = "Python extension and metadata helper for langgraph-rs"
+requires-python = ">=3.10"
+license = { text = "MIT OR Apache-2.0" }
+
+[tool.maturin]
+manifest-path = "Cargo.toml"
+python-source = "python"
+module-name = "langgraph_inspector.langgraph_inspector"
+features = ["python"]

@@ -10,7 +10,7 @@ Experimental tooling for inspecting LangGraph metadata and scaffolding Rust code
 
 ## Overview
 
-`langgraph-rs` is an experimental project. Its current CLI cannot extract graph metadata from a Python workflow, and generated node and routing functions are scaffolds that require implementation. It does not yet convert a workflow's behavior into equivalent Rust code.
+`langgraph-rs` is experimental tooling for extracting graph metadata from Python LangGraph files and generating Rust scaffolding. Extraction executes the selected Python file. Generated node and routing functions are scaffolds that require implementation; the CLI does not translate Python behavior into equivalent Rust code.
 
 The Python package metadata in `pyproject.toml` requires Python 3.10 or newer. The Rust workspace does not declare a minimum supported Rust version in `Cargo.toml`.
 
@@ -19,13 +19,14 @@ The Python package metadata in `pyproject.toml` requires Python 3.10 or newer. T
 | Capability | Status |
 | --- | --- |
 | CLI help and version output | Supported |
-| CLI inspection of a Python workflow | Not supported: extraction is not implemented |
-| CLI conversion of a Python workflow | Not supported: extraction is not implemented |
+| CLI inspection of a Python workflow | Supported when the local `langgraph-inspector` package and graph dependencies are installed in the selected Python environment |
+| CLI conversion of a Python workflow | Generates a Rust package scaffold from extracted metadata; node and routing behavior remain placeholders |
+| CLI graph visualization | Mermaid and DOT output for declared nodes and ordinary edges |
 | Generated node and conditional-routing logic | Scaffolding only; you must implement the behavior |
 | Conversion validation | Not supported: validation is not implemented |
 | Performance or production guarantees | Not established |
 
-The Rust generator can produce scaffolding from graph metadata supplied through its Rust API. This does not make the CLI able to inspect Python workflows or provide semantic conversion.
+The local `langgraph-inspector` package is built from source and is not installed automatically by the CLI. Use the same Python environment for LangGraph dependencies and the inspector extension.
 
 **Release:** v0.1.2 - [Release Notes](https://github.com/genai-rs/langgraph-rs/releases/tag/v0.1.2)
 
@@ -47,6 +48,10 @@ The workspace is organized into the following crates:
 git clone https://github.com/genai-rs/langgraph-rs
 cd langgraph-rs
 
+# Set up LangGraph dependencies and build the local inspector extension
+uv sync --locked --all-extras
+uv pip install --no-deps ./langgraph-inspector
+
 # Build the project
 cargo build --release
 
@@ -63,11 +68,14 @@ langgraph-rs --help
 # Check the installed CLI version
 langgraph-rs --version
 
-# Show the syntax for the inspection command
-langgraph-rs inspect --help
+# Inspect an explicitly selected compiled graph
+LANGGRAPH_PYTHON=.venv/bin/python langgraph-rs inspect tests/fixtures/linear_workflow.py --graph-object graph
+
+# Generate Rust scaffolding; implement node and routing behavior yourself
+LANGGRAPH_PYTHON=.venv/bin/python langgraph-rs convert tests/fixtures/linear_workflow.py --graph-object graph
 ```
 
-The workflow commands are placeholders while Python graph extraction is unimplemented. `convert`, `inspect`, and `visualize` fail for valid Python input with an extraction error; `validate` reports that validation is not implemented. Do not treat generated scaffolding as working node logic or deploy it as an equivalent workflow.
+Pass `--python PATH` to choose an interpreter directly, or set `LANGGRAPH_PYTHON`. The default lookup uses `python3` on `PATH` (and `python` on Windows). The selected interpreter must have LangGraph and the local inspector package installed. In the uv environment, the interpreter path is `.venv/bin/python` on macOS/Linux and `.venv\\Scripts\\python.exe` on Windows. `--graph-object` is required and accepts a dotted attribute path such as `workflow.graph`. The CLI does not install Python dependencies. `validate` remains unimplemented.
 
 ## Example
 
@@ -93,7 +101,7 @@ graph.set_finish_point("llm")
 compiled = graph.compile()
 ```
 
-This is an input example only. The current CLI cannot extract it, and the generator does not translate the Python node body or produce an equivalent executable workflow. Any generated node logic needs to be implemented and verified by the user.
+This is an input example. The CLI can extract its graph metadata when the selected Python environment has the required packages, but the generator does not translate the Python node body or produce an equivalent executable workflow. Any generated node logic needs to be implemented and verified by the user.
 
 ## Examples
 

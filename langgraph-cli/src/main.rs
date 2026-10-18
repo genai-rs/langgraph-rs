@@ -1,6 +1,7 @@
 use anyhow::{bail, ensure, Context, Result};
 use clap::{Parser, Subcommand};
 use langgraph_cli::package_writer::write_generated_package;
+use langgraph_cli::python_adapter::{self, ExtractionOptions};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -34,6 +35,9 @@ enum Commands {
         /// Generate tests alongside the code
         #[arg(long)]
         with_tests: bool,
+
+        #[command(flatten)]
+        extraction: ExtractionOptions,
     },
 
     /// Inspect a LangGraph workflow and output metadata
@@ -45,6 +49,9 @@ enum Commands {
         /// Output format (json; yaml and toml are not implemented)
         #[arg(short, long, default_value = "json")]
         format: String,
+
+        #[command(flatten)]
+        extraction: ExtractionOptions,
     },
 
     /// Validate that Rust code matches Python behavior
@@ -75,6 +82,9 @@ enum Commands {
         /// Output file
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        #[command(flatten)]
+        extraction: ExtractionOptions,
     },
 }
 
@@ -99,11 +109,16 @@ async fn main() -> Result<()> {
             input,
             output,
             with_tests,
+            extraction,
         } => {
-            convert_workflow(input, output, with_tests).await?;
+            convert_workflow(input, output, with_tests, extraction).await?;
         }
-        Commands::Inspect { graph, format } => {
-            inspect_graph(graph, format).await?;
+        Commands::Inspect {
+            graph,
+            format,
+            extraction,
+        } => {
+            inspect_graph(graph, format, extraction).await?;
         }
         Commands::Validate {
             python,
@@ -116,20 +131,27 @@ async fn main() -> Result<()> {
             graph,
             format,
             output,
+            extraction,
         } => {
-            visualize_graph(graph, format, output).await?;
+            visualize_graph(graph, format, output, extraction).await?;
         }
     }
 
     Ok(())
 }
 
-async fn convert_workflow(input: PathBuf, output: PathBuf, with_tests: bool) -> Result<()> {
+async fn convert_workflow(
+    input: PathBuf,
+    output: PathBuf,
+    with_tests: bool,
+    extraction: ExtractionOptions,
+) -> Result<()> {
     info!("Converting LangGraph workflow: {:?}", input);
 
     // Step 1: Extract graph info from Python
     info!("Extracting graph metadata...");
-    let graph_json = extract_graph_info(&input)?;
+    let graph_info = python_adapter::extract_graph_info(&input, &extraction).await?;
+    let graph_json = serde_json::to_string_pretty(&graph_info)?;
 
     // Step 2: Generate Rust code
     info!("Generating Rust code...");
@@ -147,14 +169,19 @@ async fn convert_workflow(input: PathBuf, output: PathBuf, with_tests: bool) -> 
     Ok(())
 }
 
-async fn inspect_graph(graph: PathBuf, format: String) -> Result<()> {
+async fn inspect_graph(
+    graph: PathBuf,
+    format: String,
+    extraction: ExtractionOptions,
+) -> Result<()> {
     info!("Inspecting graph: {:?}", graph);
 
     ensure!(
         format == "json",
         "Unsupported inspect format: {format}; only json is supported"
     );
-    let graph_json = extract_graph_info(&graph)?;
+    let graph_info = python_adapter::extract_graph_info(&graph, &extraction).await?;
+    let graph_json = serde_json::to_string_pretty(&graph_info)?;
     println!("{}", graph_json);
 
     Ok(())
@@ -179,15 +206,19 @@ async fn validate_conversion(
     bail!("Validation is not implemented")
 }
 
-async fn visualize_graph(graph: PathBuf, format: String, output: Option<PathBuf>) -> Result<()> {
+async fn visualize_graph(
+    graph: PathBuf,
+    format: String,
+    output: Option<PathBuf>,
+    extraction: ExtractionOptions,
+) -> Result<()> {
     info!("Visualizing graph: {:?}", graph);
 
     ensure!(
         matches!(format.as_str(), "mermaid" | "dot"),
         "Unsupported visualization format: {format}; supported formats are mermaid and dot"
     );
-    let graph_json = extract_graph_info(&graph)?;
-    let graph_info: langgraph_inspector::GraphInfo = serde_json::from_str(&graph_json)?;
+    let graph_info = python_adapter::extract_graph_info(&graph, &extraction).await?;
 
     let visualization = match format.as_str() {
         "mermaid" => generate_mermaid(&graph_info),
@@ -216,11 +247,6 @@ fn validate_input_file(input: &Path) -> Result<()> {
     fs::File::open(input)
         .with_context(|| format!("Cannot open input file: {}", input.display()))?;
     Ok(())
-}
-
-fn extract_graph_info(input: &Path) -> Result<String> {
-    validate_input_file(input)?;
-    bail!("Python graph extraction is not implemented")
 }
 
 fn generate_mermaid(graph_info: &langgraph_inspector::GraphInfo) -> String {

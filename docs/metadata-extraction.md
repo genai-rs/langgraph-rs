@@ -1,10 +1,10 @@
-# Python metadata extraction protocol (proposal)
+# Python metadata extraction protocol
 
-**Status:** proposal amended from exact-head review. This document specifies an interface; it does not enable Python execution in the CLI.
+**Status:** implemented. The CLI uses this versioned subprocess protocol for `inspect`, `visualize`, and the extraction step in `convert`. The Rust extractor also reads the supported LangGraph 0.6.10 `CompiledStateGraph.builder` metadata so compiled graphs expose declared nodes, routes, entry point, and user state annotations without leaking Pregel runtime nodes or channels. Join edges recorded in `waiting_edges` and conditional branches from `START` or `END` are rejected because the current `GraphInfo` shape cannot represent them faithfully.
 
 ## Decision and package layout
 
-Use a subprocess adapter for `inspect` and the extraction step used by `convert`. The adapter keeps the Rust CLI independent of CPython at link and startup time. It loads the user's file with the selected Python interpreter, then calls the existing `langgraph_inspector.extract_graph_info` PyO3 function. It must not reproduce that function's graph traversal in Python or translate arbitrary Python code into Rust.
+Use a subprocess adapter for `inspect`, `visualize`, and the extraction step used by `convert`. The adapter keeps the Rust CLI independent of CPython at link and startup time. It loads the user's file with the selected Python interpreter, then calls `langgraph_inspector.extract_graph_info`. The Python helper only loads and selects the graph; graph metadata traversal remains in the Rust extractor. This extractor supports the existing generic metadata surface and the explicitly tested LangGraph 0.6.10 `CompiledStateGraph.builder` shape. It does not translate arbitrary Python code into Rust.
 
 Package the helper and existing extension locally under `langgraph-inspector`, leaving the root Python dependency project alone:
 
@@ -105,8 +105,8 @@ The response wrapper's `protocol_version` is separate from the `GraphInfo` shape
 
 - Before importing user code or extracting metadata, the helper flushes Python streams, duplicates protocol stdout to a saved non-inheritable file descriptor, then redirects descriptor 1 to descriptor 2 for the rest of the helper lifetime. This isolates the protocol from `print`, `os.write(1, ...)`, and ordinary native writes by imported code. The helper writes the final JSON only through the saved protocol descriptor, and only after extraction and response serialization succeed. This is protocol isolation, not a hostile-code sandbox.
 - On success, the saved protocol descriptor contains exactly one response JSON document and the helper exits with status 0. Extraction or serialization failures write no protocol bytes; the helper exits nonzero and stderr contains a concise diagnostic. If the final pipe write itself fails, the CLI treats partial output as failure and discards it. A traceback is not part of the protocol; an explicit future debug option may add one.
-- The CLI starts draining stdout and stderr concurrently when it launches the child, and closes stdin after sending the single request. It caps captured stdout at 16 MiB; exceeding the cap fails the operation and terminates the direct helper. It retains only the most recent 1 MiB of stderr for diagnostics while continuing to drain stderr so the child cannot block on a full pipe.
-- One 30-second default deadline covers request writing, helper execution, and output collection. `--timeout` accepts a positive duration to override it. On expiry, the CLI terminates, kills if needed, and reaps the direct helper within a fixed 1-second cleanup grace, then discards partial stdout. It cancels and closes pipe readers after that grace even if a descendant still holds a pipe open. The CLI returns after the deadline and cleanup grace rather than waiting indefinitely for EOF.
+- The CLI starts draining stdout and stderr concurrently when it launches the child, and closes stdin after sending the single request. It caps captured stdout at 16 MiB; exceeding the cap fails the operation and kills the direct helper. It retains only the most recent 1 MiB of stderr for diagnostics while continuing to drain stderr so the child cannot block on a full pipe.
+- One 30-second default deadline covers request writing, helper execution, and output collection. `--timeout` accepts a positive duration to override it. On expiry, the CLI kills and reaps the direct helper within a fixed 1-second cleanup grace, then discards partial stdout. It cancels and closes pipe readers after that grace even if a descendant still holds a pipe open. The CLI returns after the deadline and cleanup grace rather than waiting indefinitely for EOF.
 - If the helper exits successfully, the CLI rejects empty output, multiple JSON values, malformed JSON, unknown response fields, an unsupported response version, a missing `graph_info` object, or a `graph_info` value that cannot deserialize as `GraphInfo`.
 - Request and response version 1 reject unknown fields and fields with the wrong type. Invalid request JSON, an unsupported protocol version or operation, a nonexistent/non-file source path, an invalid selector, an interpreter launch error, an import error, a missing selected object, or an extraction error fails without producing graph output.
 - The process exit status, not a JSON error envelope, represents failure. This keeps stdout reserved for one success document and avoids a second error schema.
@@ -120,26 +120,20 @@ Interpreter discovery and helper launch are lazy and limited to extraction comma
 
 ## Adapter implementation boundary and acceptance
 
-The follow-on implementation is bounded to the local mixed-package metadata above and one shared Rust subprocess adapter reused by `inspect` and `convert`. If visualization extraction is enabled, route it through that same adapter; otherwise leave it unimplemented. Do not add a second graph traversal, Python-to-Rust translation, tracing, validation, automatic installation, wheel publication, or release workflow changes.
+The implementation is bounded to the local mixed-package metadata above, one shared Rust subprocess adapter, and the existing Rust extractor's supported builder metadata path. `inspect`, `convert`, and `visualize` reuse that adapter. Keep the helper protocol-only; do not add Python-side traversal, Python-to-Rust translation, tracing, validation, automatic installation, wheel publication, or release workflow changes.
 
 Before accepting the adapter, verify all of the following:
 
 1. Install `./langgraph-inspector` into a clean selected virtual environment and run the packaged helper from a working directory outside the repository.
-2. Send the documented request for both `docs/fixtures/metadata-extraction/graph.py` and the existing `tests/fixtures/linear_workflow.py`. Parse the actual response and deserialize its `graph_info` as `GraphInfo`; compare the synthetic fixture after normalizing the absolute `source_hint` path.
+2. Run the packaged helper outside the checkout against the documented synthetic fixture and the real linear and conditional LangGraph fixtures. Parse each response and deserialize `graph_info` as `GraphInfo`; normalize absolute `source_hint` paths in comparisons. For the compiled fixtures, assert declared user nodes, entry points, ordinary edges or conditional route labels and targets, and annotated user state fields. Assert that Pregel runtime nodes and channels do not appear.
 3. Exercise malformed JSON, wrong or unknown fields, unsupported versions, missing files and selectors, import errors, invalid explicit interpreters (with no fallback), nonzero helper exits, stdout writes from Python and native code, stdout over 16 MiB, stderr over 1 MiB, and timeout while output readers are active.
 4. Confirm the CLI returns after bounded direct-child cleanup even when a descendant retains a pipe. The test harness must clean up any descendant it creates; the CLI makes no process-tree termination guarantee.
 5. Run `--help` and `--version` with no usable Python on `PATH` and verify no interpreter is launched. Preserve the existing release portability checks.
 
-LG03 remains a documentation and fixture proposal until this interface is accepted. Do not implement the adapter as part of this proposal.
+LG03's protocol proposal has been implemented. This document records the accepted interface and its current implementation boundary.
 
-## Source facts checked on main
+## Implementation and portability evidence
 
-At `867d5beef348616b433fa029e335e247940b21f3`:
+The local extension distribution is built from `langgraph-inspector/pyproject.toml` and is installed explicitly into the same Python environment used for the workflow's LangGraph dependencies. The CLI does not install it automatically. The CLI tests verify that `--help` and `--version` do not need a usable Python interpreter, while the Python extraction integration tests run the packaged helper from a working directory outside the repository. CI installs the local extension before running CLI and coverage tests, and sets `LANGGRAPH_PYTHON` to that environment.
 
-- `langgraph-cli/Cargo.toml` sets `default-features = false` for `langgraph-inspector`.
-- `langgraph-inspector/src/lib.rs` defines `GraphInfo`, `NodeInfo`, `EdgeInfo`, `StateSchema`, `FieldInfo`, and `ConditionalEdge`. `GraphInfo` has the fields used by the response fixture.
-- `langgraph-inspector/src/python.rs` exports `extract_graph_info`, serializes `GraphInfo` to JSON, and contains the `SimpleNamespace` extraction test mirrored by the fixture.
-- `langgraph-cli/src/main.rs` still reports that Python graph extraction is not implemented; this proposal does not change that behavior.
-- `langgraph-cli/tests/cli_contract.rs` checks help/version and current placeholder behavior. `.github/workflows/release.yml` smoke-tests the built binary with `--help` and `--version`, and on macOS inspects linked libraries with `otool -L`. The workflow installs Python for other build checks, so those smoke tests alone do not prove Python-absent startup; the explicit Python-absent probe above is required for adapter acceptance.
-
-These facts support the boundary and shape of the proposal. The proposed extension package and helper do not exist yet; they are part of the bounded follow-on adapter work, not a claim about current packaging.
+The existing release portability checks remain responsible for verifying the built CLI's platform linkage. The adapter keeps the CLI's inspector dependency at `default-features = false`; enabling the PyO3 feature in the CLI would reintroduce a link-time Python dependency.

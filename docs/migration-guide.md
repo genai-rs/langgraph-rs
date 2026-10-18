@@ -2,14 +2,15 @@
 
 ## Current status
 
-`langgraph-rs` is experimental graph-inspection and scaffolding tooling, not a semantic transpiler. The CLI's Python graph extraction is not implemented, so `convert`, `inspect`, and `visualize` currently return an extraction error for a valid Python file. `validate` is also not implemented.
+`langgraph-rs` is experimental graph-inspection and scaffolding tooling, not a semantic transpiler. `inspect`, `visualize`, and the extraction step used by `convert` can read an explicitly selected graph object when the chosen Python environment contains the local inspector package and the workflow's dependencies. `validate` is not implemented.
 
 The generator can produce Rust scaffolding when supplied graph metadata through its Rust API. Generated node bodies and conditional routing are placeholders; they do not preserve the Python node behavior. There is no automatic migration path yet.
 
 | Task | Current status |
 | --- | --- |
-| Inspect a Python workflow from the CLI | Unsupported: extraction is not implemented |
-| Convert Python node and routing behavior | Unsupported: semantic conversion is not implemented |
+| Inspect graph metadata from a Python workflow | Supported with the local inspector package installed in the selected Python environment |
+| Convert Python node and routing behavior | Not supported: conversion generates scaffolding and does not translate behavior |
+| Visualize extracted graph metadata | Mermaid and DOT output for declared nodes and ordinary edges |
 | Generate Rust scaffolding from supplied metadata | Available through the Rust generator API; experimental |
 | Validate Python and Rust behavior equivalence | Unsupported: validation is not implemented |
 | Deploy generated code as an equivalent workflow | Not supported; node logic must be written and verified by you |
@@ -22,7 +23,7 @@ From a checkout of this repository, install the CLI with Cargo:
 cargo install --path langgraph-cli
 ```
 
-These commands show the actual supported command syntax without attempting an unimplemented workflow operation:
+These commands show the supported command syntax:
 
 ```bash
 langgraph-rs --help
@@ -30,11 +31,25 @@ langgraph-rs inspect --help
 langgraph-rs convert --help
 ```
 
-The CLI takes a positional Python path for inspection, for example `langgraph-rs inspect workflow.py`. That command currently fails because Python graph extraction is not implemented. The help text describes command arguments, not a promise that the underlying workflow operation is available.
+Install the Python dependencies and build the local inspector package from the repository root:
+
+```bash
+uv sync --locked --all-extras
+uv pip install --no-deps ./langgraph-inspector
+```
+
+Then select the Python interpreter that contains both packages and name the graph explicitly:
+
+```bash
+LANGGRAPH_PYTHON=.venv/bin/python langgraph-rs inspect workflow.py --graph-object graph
+LANGGRAPH_PYTHON=.venv/bin/python langgraph-rs convert workflow.py --graph-object graph
+```
+
+Use `--python PATH` instead of `LANGGRAPH_PYTHON` when selecting an interpreter for one command. The selector accepts dotted attribute lookup, such as `workflow.graph`; it does not evaluate Python expressions. The CLI does not install dependencies automatically. On Windows, the uv environment's interpreter is `.venv\\Scripts\\python.exe`.
 
 ## Manual migration
 
-Until extraction and semantic conversion are implemented, use the LangGraph documentation and migrate workflows manually. Treat any generator output as a starting scaffold only:
+For behavior migration, use the LangGraph documentation and implement workflow behavior manually. Treat any generator output as a starting scaffold only:
 
 1. Recreate the state model in Rust and check that optional fields and values retain the original meaning.
 2. Implement each node's behavior in Rust. Generated node functions return an explicit unimplemented error until you replace their editable scaffold body; the Python function body is not translated.
