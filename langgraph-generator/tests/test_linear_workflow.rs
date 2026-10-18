@@ -75,3 +75,89 @@ fn test_generated_code_has_expected_structure() {
     assert!(code.contains("value: i64"));
     assert!(code.contains("async fn test_node"));
 }
+
+#[test]
+fn test_shuffled_nodes_follow_edge_order() {
+    let graph = graph_json(
+        &["c", "a", "b"],
+        &[("a", "b"), ("b", "c"), ("c", "END")],
+        "a",
+    );
+    let code = langgraph_generator::generate_from_json(&graph).unwrap();
+
+    assert_eq!(execution_order(&code), ["a", "b", "c"]);
+}
+
+#[test]
+fn test_linear_graph_rejects_missing_target() {
+    let graph = graph_json(&["a"], &[("a", "missing")], "a");
+
+    let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
+    assert!(error.to_string().contains("missing"));
+    assert!(error.to_string().contains("does not name a graph node"));
+}
+
+#[test]
+fn test_linear_graph_rejects_multiple_successors() {
+    let graph = graph_json(&["a", "b", "c"], &[("a", "b"), ("a", "c")], "a");
+
+    let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
+    assert!(error.to_string().contains("multiple successors"));
+    assert!(error.to_string().contains("a"));
+}
+
+#[test]
+fn test_linear_graph_rejects_cycles() {
+    let graph = graph_json(&["a", "b"], &[("a", "b"), ("b", "a")], "a");
+
+    let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
+    assert!(error.to_string().contains("cycle"));
+    assert!(error.to_string().contains("a"));
+}
+
+#[test]
+fn test_linear_graph_rejects_unreachable_nodes() {
+    let graph = graph_json(&["a", "b"], &[("a", "END")], "a");
+
+    let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
+    assert!(error.to_string().contains("unreachable nodes"));
+    assert!(error.to_string().contains("b"));
+}
+
+fn graph_json(nodes: &[&str], edges: &[(&str, &str)], entry_point: &str) -> String {
+    let nodes = nodes
+        .iter()
+        .map(|name| {
+            serde_json::json!({
+                "name": name,
+                "func_name": format!("{name}_function"),
+                "signature": "",
+                "docstring": null,
+                "source_hint": null
+            })
+        })
+        .collect::<Vec<_>>();
+    let edges = edges
+        .iter()
+        .map(|(from, to)| serde_json::json!({"from": from, "to": to, "condition": null}))
+        .collect::<Vec<_>>();
+
+    serde_json::json!({
+        "nodes": nodes,
+        "edges": edges,
+        "state_schema": {"fields": []},
+        "entry_point": entry_point,
+        "conditional_edges": {}
+    })
+    .to_string()
+}
+
+fn execution_order(code: &str) -> Vec<String> {
+    code.split("async fn execute_graph")
+        .nth(1)
+        .unwrap()
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("// Execute node: "))
+        .map(str::to_owned)
+        .collect()
+}

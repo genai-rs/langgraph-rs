@@ -28,8 +28,14 @@ impl Drop for TempDir {
 }
 
 const LINEAR_GRAPH: &str = r#"{
-    "nodes": [{"name":"step","func_name":"step","signature":"(state) -> state","docstring":null,"source_hint":null}],
-    "edges": [],
+    "nodes": [
+        {"name":"finish","func_name":"finish","signature":"(state) -> state","docstring":null,"source_hint":null},
+        {"name":"step","func_name":"step","signature":"(state) -> state","docstring":null,"source_hint":null}
+    ],
+    "edges": [
+        {"from":"step","to":"finish","condition":null},
+        {"from":"finish","to":"END","condition":null}
+    ],
     "state_schema": {"fields": [
         {"name":"counter","type_name":"int","is_optional":false,"default_value":null},
         {"name":"messages","type_name":"list[str]","is_optional":false,"default_value":null},
