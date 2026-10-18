@@ -94,7 +94,9 @@ fn test_linear_graph_rejects_missing_target() {
 
     let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
     assert!(error.to_string().contains("missing"));
-    assert!(error.to_string().contains("does not name a graph node"));
+    assert!(error
+        .to_string()
+        .contains("targets neither a graph node nor END"));
 }
 
 #[test]
@@ -122,6 +124,42 @@ fn test_linear_graph_rejects_unreachable_nodes() {
     let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
     assert!(error.to_string().contains("unreachable nodes"));
     assert!(error.to_string().contains("b"));
+}
+
+#[test]
+fn test_linear_graph_rejects_duplicate_node_names() {
+    let graph = graph_json(&["a", "a"], &[("a", "END")], "a");
+
+    let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
+    assert!(error.to_string().contains("duplicate node name 'a'"));
+}
+
+#[test]
+fn test_linear_graph_rejects_unknown_edge_sources() {
+    let graph = graph_json(&["a"], &[("a", "END"), ("ghost", "missing")], "a");
+
+    let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
+    assert!(error.to_string().contains("edge source 'ghost'"));
+    assert!(error.to_string().contains("not a declared graph node"));
+}
+
+#[test]
+fn test_linear_graph_rejects_condition_bearing_direct_edges() {
+    let mut graph: serde_json::Value =
+        serde_json::from_str(&graph_json(&["a", "b"], &[("a", "b"), ("b", "END")], "a")).unwrap();
+    graph["edges"][0]["condition"] = serde_json::json!("false");
+
+    let error = langgraph_generator::generate_from_json(&graph.to_string()).unwrap_err();
+    assert!(error.to_string().contains("has a condition"));
+    assert!(error.to_string().contains("conditional_edges metadata"));
+}
+
+#[test]
+fn test_linear_graph_supports_start_sentinel_edge() {
+    let graph = graph_json(&["a"], &[("__start__", "a"), ("a", "END")], "__start__");
+    let code = langgraph_generator::generate_from_json(&graph).unwrap();
+
+    assert_eq!(execution_order(&code), ["a"]);
 }
 
 fn graph_json(nodes: &[&str], edges: &[(&str, &str)], entry_point: &str) -> String {
