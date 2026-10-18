@@ -173,6 +173,12 @@ async fn execute_graph(mut state: GraphState) -> Result<GraphState> {{
     fn generate_linear_execution(&self) -> Result<String> {
         let mut nodes_by_name = HashMap::new();
         for node in &self.graph_info.nodes {
+            if matches!(node.name.as_str(), "__start__" | "END" | "__end__") {
+                anyhow::bail!(
+                    "Linear graph node name '{}' is reserved for a graph sentinel",
+                    node.name
+                );
+            }
             if nodes_by_name.insert(node.name.as_str(), node).is_some() {
                 anyhow::bail!("Linear graph contains duplicate node name '{}'", node.name);
             }

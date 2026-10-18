@@ -173,6 +173,16 @@ fn test_linear_graph_supports_start_sentinel_edge() {
     assert_eq!(execution_order(&code), ["a"]);
 }
 
+#[test]
+fn test_linear_graph_rejects_reserved_sentinel_node_names() {
+    for name in ["__start__", "END", "__end__"] {
+        let graph = graph_json(&[name], &[(name, name)], name);
+
+        let error = langgraph_generator::generate_from_json(&graph).unwrap_err();
+        assert!(error.to_string().contains("reserved for a graph sentinel"));
+    }
+}
+
 fn graph_json(nodes: &[&str], edges: &[(&str, &str)], entry_point: &str) -> String {
     let nodes = nodes
         .iter()
