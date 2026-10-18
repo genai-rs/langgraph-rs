@@ -163,27 +163,87 @@ async fn execute_graph(mut state: GraphState) -> Result<GraphState> {{
         if !self.graph_info.conditional_edges.is_empty() {
             logic.push_str(&self.generate_conditional_execution()?);
         } else {
-            logic.push_str(&self.generate_linear_execution());
+            logic.push_str(&self.generate_linear_execution()?);
         }
 
         Ok(logic)
     }
 
     /// Generate linear execution (no conditionals)
-    fn generate_linear_execution(&self) -> String {
-        self.graph_info
+    fn generate_linear_execution(&self) -> Result<String> {
+        let nodes_by_name: std::collections::HashMap<_, _> = self
+            .graph_info
             .nodes
             .iter()
-            .map(|node| {
-                format!(
-                    r#"    // Execute node: {}
-    state = {}_node(state).await
-        .context("Failed to execute node '{}')")?;"#,
-                    node.name, node.name, node.name
+            .map(|node| (node.name.as_str(), node))
+            .collect();
+
+        let mut current = self.graph_info.entry_point.as_str();
+        let mut visited = HashSet::new();
+        let mut execution = Vec::new();
+
+        loop {
+            if current == "END" || current == "__end__" {
+                break;
+            }
+
+            let node = nodes_by_name.get(current).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Linear graph entry or edge target '{current}' does not name a graph node"
                 )
-            })
-            .collect::<Vec<_>>()
-            .join("\n\n")
+            })?;
+
+            if !visited.insert(current) {
+                anyhow::bail!("Linear graph contains a cycle at node '{current}'");
+            }
+
+            execution.push(format!(
+                r#"    // Execute node: {name}
+    state = {name}_node(state).await
+        .context("Failed to execute node '{name}'")?;"#,
+                name = node.name
+            ));
+
+            let successors: Vec<_> = self
+                .graph_info
+                .edges
+                .iter()
+                .filter(|edge| edge.from == current)
+                .collect();
+
+            match successors.as_slice() {
+                [edge] => current = edge.to.as_str(),
+                [] if self.graph_info.nodes.len() == 1 && current == self.graph_info.entry_point => {
+                    // Preserve the existing one-node fixture shape, where the sole node is terminal
+                    // and no explicit END edge is emitted.
+                    break;
+                }
+                [] => anyhow::bail!(
+                    "Linear graph node '{current}' has no successor; add an edge to another node or END"
+                ),
+                _ => anyhow::bail!(
+                    "Linear graph node '{current}' has multiple successors; conditional routing is unsupported here"
+                ),
+            }
+        }
+
+        let mut unreachable: Vec<_> = self
+            .graph_info
+            .nodes
+            .iter()
+            .filter(|node| !visited.contains(node.name.as_str()))
+            .map(|node| node.name.as_str())
+            .collect();
+        unreachable.sort_unstable();
+        if !unreachable.is_empty() {
+            anyhow::bail!(
+                "Linear graph contains unreachable nodes from entry point '{}': {}",
+                self.graph_info.entry_point,
+                unreachable.join(", ")
+            );
+        }
+
+        Ok(execution.join("\n\n"))
     }
 
     /// Generate conditional execution with routing
