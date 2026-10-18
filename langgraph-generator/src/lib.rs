@@ -1,7 +1,7 @@
 use anyhow::Result;
 use langgraph_inspector::type_mapping::{map_python_type, RustType};
 use langgraph_inspector::{EdgeInfo, FieldInfo, GraphInfo, NodeInfo};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 mod code_formatter;
 
@@ -171,18 +171,65 @@ async fn execute_graph(mut state: GraphState) -> Result<GraphState> {{
 
     /// Generate linear execution (no conditionals)
     fn generate_linear_execution(&self) -> Result<String> {
-        let nodes_by_name: std::collections::HashMap<_, _> = self
-            .graph_info
-            .nodes
-            .iter()
-            .map(|node| (node.name.as_str(), node))
-            .collect();
+        let mut nodes_by_name = HashMap::new();
+        for node in &self.graph_info.nodes {
+            if nodes_by_name.insert(node.name.as_str(), node).is_some() {
+                anyhow::bail!("Linear graph contains duplicate node name '{}'", node.name);
+            }
+        }
+
+        for edge in &self.graph_info.edges {
+            if edge.condition.is_some() {
+                anyhow::bail!(
+                    "Linear graph edge '{}' -> '{}' has a condition; conditional edges require conditional_edges metadata",
+                    edge.from,
+                    edge.to
+                );
+            }
+            if edge.from != "__start__" && !nodes_by_name.contains_key(edge.from.as_str()) {
+                anyhow::bail!(
+                    "Linear graph edge source '{}' is not a declared graph node",
+                    edge.from
+                );
+            }
+            if edge.to != "END"
+                && edge.to != "__end__"
+                && !nodes_by_name.contains_key(edge.to.as_str())
+            {
+                anyhow::bail!(
+                    "Linear graph edge '{}' -> '{}' targets neither a graph node nor END",
+                    edge.from,
+                    edge.to
+                );
+            }
+        }
 
         let mut current = self.graph_info.entry_point.as_str();
         let mut visited = HashSet::new();
         let mut execution = Vec::new();
 
         loop {
+            if current == "__start__" {
+                let successors: Vec<_> = self
+                    .graph_info
+                    .edges
+                    .iter()
+                    .filter(|edge| edge.from == current)
+                    .collect();
+                match successors.as_slice() {
+                    [edge] => {
+                        current = edge.to.as_str();
+                        continue;
+                    }
+                    [] => anyhow::bail!(
+                        "Linear graph entry sentinel '__start__' has no successor; connect it to a graph node or END"
+                    ),
+                    _ => anyhow::bail!(
+                        "Linear graph entry sentinel '__start__' has multiple successors"
+                    ),
+                }
+            }
+
             if current == "END" || current == "__end__" {
                 break;
             }
