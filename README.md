@@ -4,22 +4,28 @@
 [![codecov](https://codecov.io/gh/genai-rs/langgraph-rs/branch/main/graph/badge.svg)](https://codecov.io/gh/genai-rs/langgraph-rs)
 [![Crates.io](https://img.shields.io/crates/v/langgraph-rs)](https://crates.io/crates/langgraph-rs)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
-[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
-Convert LangGraph (Python) workflows into high-performance Rust code for production-ready LLM applications.
+Experimental tooling for inspecting LangGraph metadata and scaffolding Rust code.
 
 ## Overview
 
-`langgraph-rs` is a transpiler that converts LangGraph Python workflows into efficient Rust implementations, delivering 7-8x performance improvements over Python execution.
+`langgraph-rs` is an experimental project. Its current CLI cannot extract graph metadata from a Python workflow, and generated node and routing functions are scaffolds that require implementation. It does not yet convert a workflow's behavior into equivalent Rust code.
 
-**Key Features:**
-- 7-8x faster than Python execution
-- Memory safety without garbage collection
-- True async concurrency with Tokio
-- Smaller deployment footprint and lower resource usage
-- Type-safe code generation with proper error handling
-- Production-ready with Docker and Kubernetes support
+The Python package metadata in `pyproject.toml` requires Python 3.10 or newer. The Rust workspace does not declare a minimum supported Rust version in `Cargo.toml`.
+
+### Current capabilities
+
+| Capability | Status |
+| --- | --- |
+| CLI help and version output | Supported |
+| CLI inspection of a Python workflow | Not supported: extraction is not implemented |
+| CLI conversion of a Python workflow | Not supported: extraction is not implemented |
+| Generated node and conditional-routing logic | Scaffolding only; you must implement the behavior |
+| Conversion validation | Not supported: validation is not implemented |
+| Performance or production guarantees | Not established |
+
+The Rust generator can produce scaffolding from graph metadata supplied through its Rust API. This does not make the CLI able to inspect Python workflows or provide semantic conversion.
 
 **Release:** v0.1.2 - [Release Notes](https://github.com/genai-rs/langgraph-rs/releases/tag/v0.1.2)
 
@@ -51,19 +57,21 @@ cargo install --path langgraph-cli
 ### Basic Usage
 
 ```bash
-# Convert a LangGraph workflow to Rust
-langgraph-rs convert my_workflow.py --output ./rust_graph/
+# Show available CLI commands and options
+langgraph-rs --help
 
-# Inspect a LangGraph instance
-langgraph-rs inspect --graph my_graph.py
+# Check the installed CLI version
+langgraph-rs --version
 
-# Validate conversion
-langgraph-rs validate --python ./original.py --rust ./generated/
+# Show the syntax for the inspection command
+langgraph-rs inspect --help
 ```
+
+The workflow commands are placeholders while Python graph extraction is unimplemented. `convert`, `inspect`, and `visualize` fail for valid Python input with an extraction error; `validate` reports that validation is not implemented. Do not treat generated scaffolding as working node logic or deploy it as an equivalent workflow.
 
 ## Example
 
-### Input (Python LangGraph)
+### Example input (Python LangGraph)
 
 ```python
 from langgraph.graph import StateGraph
@@ -85,32 +93,11 @@ graph.set_finish_point("llm")
 compiled = graph.compile()
 ```
 
-### Output (Generated Rust)
-
-```rust
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct AgentState {
-    messages: Vec<String>,
-    context: HashMap<String, serde_json::Value>,
-}
-
-async fn llm_node(state: AgentState) -> Result<AgentState, anyhow::Error> {
-    // LLM logic here
-    Ok(state)
-}
-
-async fn execute_graph(mut state: AgentState) -> Result<AgentState, anyhow::Error> {
-    state = llm_node(state).await?;
-    Ok(state)
-}
-```
+This is an input example only. The current CLI cannot extract it, and the generator does not translate the Python node body or produce an equivalent executable workflow. Any generated node logic needs to be implemented and verified by the user.
 
 ## Examples
 
-The project includes 11 production-ready examples demonstrating various patterns:
+The repository includes Python example scripts showing LangGraph patterns. They are source examples, not verified conversions or production-ready applications:
 
 - Customer Support Agent (multi-tier routing)
 - Content Moderation (filtering pipeline)
@@ -128,20 +115,11 @@ See [examples/README.md](examples/README.md) for detailed documentation.
 
 ## Performance
 
-Benchmarks show 7-8x performance improvement over Python:
+No reproducible end-to-end comparison of equivalent Python and Rust workflows is available. See [Performance](docs/performance.md) for the benchmark status.
 
-| Workflow Pattern | Python (ms) | Rust (ms) | Speedup |
-|-----------------|-------------|-----------|---------|
-| Linear workflow | 42 | 6 | 7.0x |
-| Conditional branching | 45 | 6 | 7.5x |
-| Loop with counter | 48 | 6 | 8.0x |
-| Average | 45 | 6 | 7.5x |
+## Selected Type Mappings
 
-*Benchmarks run on Apple M1, single-threaded. Excludes LLM API latency.*
-
-## Type Mappings
-
-Comprehensive Python to Rust type conversion:
+The generator API contains mappings for common Python type names. They are not evidence that a Python workflow can currently be extracted or semantically converted by the CLI.
 
 | Python | Rust |
 |--------|------|
@@ -156,7 +134,7 @@ Comprehensive Python to Rust type conversion:
 
 ## Deployment
 
-Production-ready deployment options:
+Deployment examples in the repository are illustrative and do not establish production readiness for this experimental tool:
 
 ### Docker
 
@@ -185,7 +163,7 @@ See [docs/deployment.md](docs/deployment.md) for detailed deployment instruction
 ## Documentation
 
 - [Migration Guide](docs/migration-guide.md) - Step-by-step migration from Python
-- [Deployment Guide](docs/deployment.md) - Production deployment options
+- [Deployment Guide](docs/deployment.md) - Deployment examples; these do not establish production readiness
 - [Performance Tuning](docs/performance.md) - Optimization techniques
 - [Contributing](CONTRIBUTING.md) - Development guidelines
 - [Changelog](CHANGELOG.md) - Version history
