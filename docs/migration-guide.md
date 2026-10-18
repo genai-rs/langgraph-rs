@@ -37,7 +37,7 @@ The CLI takes a positional Python path for inspection, for example `langgraph-rs
 Until extraction and semantic conversion are implemented, use the LangGraph documentation and migrate workflows manually. Treat any generator output as a starting scaffold only:
 
 1. Recreate the state model in Rust and check that optional fields and values retain the original meaning.
-2. Implement each node's behavior in Rust. Generated node functions currently pass state through and include TODO comments; they do not contain the Python function body.
+2. Implement each node's behavior in Rust. Generated node functions return an explicit unimplemented error until you replace their editable scaffold body; the Python function body is not translated.
 3. Implement conditional routing explicitly. Generated routing functions currently return a placeholder route.
 4. Recreate entry, exit, retry, and error behavior, then add tests that exercise the same inputs and observable outputs in both implementations.
 5. Review dependencies, secrets handling, persistence, and deployment separately before using a manually migrated workflow.
