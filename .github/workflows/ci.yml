@@ -57,7 +57,7 @@ jobs:
           PYO3_PYTHON: ${{ steps.python.outputs.python-path }}
         run: |
           uv pip install --no-deps ./langgraph-inspector
-          uv run --locked --all-extras python -c "import os, sys; open(os.environ['GITHUB_ENV'], 'a').write(f'LANGGRAPH_PYTHON={sys.executable}' + os.linesep)"
+          uv run --locked --all-extras python -c "import os, sys; open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8', newline='').write(f'LANGGRAPH_PYTHON={sys.executable}\n')"
 
       - name: Cache cargo registry
         uses: actions/cache@v6
@@ -130,7 +130,7 @@ jobs:
           PYO3_PYTHON: ${{ steps.python.outputs.python-path }}
         run: |
           uv pip install --no-deps ./langgraph-inspector
-          uv run --locked --all-extras python -c "import os, sys; open(os.environ['GITHUB_ENV'], 'a').write(f'LANGGRAPH_PYTHON={sys.executable}' + os.linesep)"
+          uv run --locked --all-extras python -c "import os, sys; open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8', newline='').write(f'LANGGRAPH_PYTHON={sys.executable}\n')"
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
